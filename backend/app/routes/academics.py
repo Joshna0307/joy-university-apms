@@ -74,6 +74,31 @@ def create_assignment():
     return jsonify({"assignment_id": row.id, "message": "Assignment created"}), 201
 
 
+@academics_bp.get("/assignments/<int:assignment_id>/submissions")
+@login_required
+@roles_required("faculty")
+def assignment_submissions(assignment_id):
+    faculty = Faculty.query.filter_by(user_id=current_user.id).first()
+    assignment = db.session.get(Assignment, assignment_id)
+    if not faculty or not assignment or assignment.faculty_id != faculty.id:
+        return jsonify({"error": "Assignment not found"}), 404
+    rows = (
+        db.session.query(AssignmentSubmission, Student, User)
+        .join(Student, Student.id == AssignmentSubmission.student_id)
+        .join(User, User.id == Student.user_id)
+        .filter(AssignmentSubmission.assignment_id == assignment.id)
+        .order_by(AssignmentSubmission.submitted_at.desc())
+        .all()
+    )
+    return jsonify({"submissions": [{
+        "student": user.name, "register_number": student.register_number,
+        "file_url": submission.file_url,
+        "submitted_at": submission.submitted_at.isoformat() + "Z",
+        "score": float(submission.score) if submission.score is not None else None,
+        "feedback": submission.feedback,
+    } for submission, student, user in rows]})
+
+
 @academics_bp.post("/assignments/<int:assignment_id>/submit")
 @login_required
 @roles_required("student")
