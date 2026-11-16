@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.authz import roles_required
-from app.models import (AttendanceRecord, AttendanceSession, Assessment, Course, Department, Enrollment, Faculty, Mark, Remediation, Semester, Student, User)
+from app.models import (AttendanceRecord, AttendanceSession, Assessment, Course, Department, Enrollment, Faculty, FacultyFeedback, Mark, Remediation, Semester, Student, User)
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -354,3 +354,26 @@ def update_remediation(remediation_id):
         row.notes = str(data.get("notes") or "").strip()[:10000]
     db.session.commit()
     return jsonify({"message": "Remediation updated", "status": row.status})
+
+
+@admin_bp.get("/feedback-summary")
+@login_required
+@roles_required("admin")
+def feedback_summary():
+    faculty_rows = Faculty.query.all()
+    result = []
+    dimensions = ["teaching_clarity", "punctuality_coverage", "doubt_resolution", "practical_guidance", "course_materials"]
+    for faculty in faculty_rows:
+        feedback = FacultyFeedback.query.filter_by(faculty_id=faculty.id).all()
+        if not feedback:
+            continue
+        averages = {key: round(sum(getattr(item, key) for item in feedback) / len(feedback), 2) for key in dimensions}
+        result.append({
+            "faculty_id": faculty.id,
+            "faculty": faculty.user.name,
+            "response_count": len(feedback),
+            "average_rating": round(sum(averages.values()) / len(dimensions), 2),
+            "dimensions": averages,
+        })
+    result.sort(key=lambda item: item["average_rating"], reverse=True)
+    return jsonify({"leaderboard": result})
