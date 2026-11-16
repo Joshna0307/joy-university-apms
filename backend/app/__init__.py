@@ -3,6 +3,7 @@ from flask import Flask, jsonify
 from flask_cors import CORS
 from flask_login import LoginManager
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from config import Config
 
 db = SQLAlchemy()
@@ -12,6 +13,10 @@ login_manager = LoginManager()
 def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
+    if os.getenv("FLASK_ENV") == "production":
+        missing = [key for key in ("DATABASE_URL", "SECRET_KEY", "FRONTEND_ORIGIN") if not os.getenv(key)]
+        if missing:
+            raise RuntimeError("Missing required production environment variables: " + ", ".join(missing))
     db.init_app(app)
     login_manager.init_app(app)
     CORS(
@@ -35,7 +40,12 @@ def create_app():
 
     @app.get("/api/health")
     def health():
-        return jsonify({"status": "ok", "service": "joy-university-apms-api"})
+        try:
+            db.session.execute(text("SELECT 1"))
+        except Exception:
+            db.session.rollback()
+            return jsonify({"status": "error", "database": "unavailable"}), 503
+        return jsonify({"status": "ok", "database": "connected", "service": "joy-university-apms-api"})
 
     with app.app_context():
         db.create_all()
