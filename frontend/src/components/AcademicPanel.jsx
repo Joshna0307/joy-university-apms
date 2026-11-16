@@ -16,7 +16,9 @@ export default function AcademicPanel({ role }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [transcript, setTranscript] = useState(null);\n  const [activeAssessment, setActiveAssessment] = useState(null);\n  const [roster, setRoster] = useState([]);
+  const [transcript, setTranscript] = useState(null);
+  const [activeAssessment, setActiveAssessment] = useState(null);
+  const [roster, setRoster] = useState([]);
 
   async function load() {
     setError("");
