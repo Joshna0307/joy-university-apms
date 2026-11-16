@@ -19,11 +19,14 @@ def create_app():
             raise RuntimeError("Missing required production environment variables: " + ", ".join(missing))
     db.init_app(app)
     login_manager.init_app(app)
-    CORS(
-        app,
-        supports_credentials=True,
-        origins=[os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")],
-    )
+    allowed_origins = [
+        origin.strip()
+        for origin in os.getenv("FRONTEND_ORIGIN", "http://localhost:5173").split(",")
+        if origin.strip()
+    ]
+    # Allow the current Vercel preview URL as well as the production frontend.
+    allowed_origins.append("https://joy-university-apms-pp4nh6pq1-joshnavi007-3793.vercel.app")
+    CORS(app, supports_credentials=True, origins=allowed_origins)
 
     from app import models  # noqa: F401 - register all SQLAlchemy models
     from app.routes.auth import auth_bp
