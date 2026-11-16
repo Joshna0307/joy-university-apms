@@ -25,7 +25,7 @@ def register_student():
         return jsonify({'error':'An account with this email already exists'}),409
     if Student.query.filter_by(register_number=register_number).first():
         return jsonify({'error':'This register number is already registered'}),409
-    user=User(name=name,email=email,role='student',active=True)
+    user=User(name=name,email=email,role='student',active=False)
     user.set_password(password)
     db.session.add(user)
     try:
@@ -36,16 +36,16 @@ def register_student():
     except IntegrityError:
         db.session.rollback()
         return jsonify({'error':'Email or register number is already in use'}),409
-    login_user(user)
-    return jsonify({'message':'Student account created','user':user.to_dict()}),201
+    return jsonify({'message':'Registration submitted. An administrator must approve your account before you can sign in.'}),202
 
 @auth_bp.post('/login')
 def login():
     data=request.get_json(silent=True) or {}
     email=(data.get('email') or '').strip().lower()
     password=data.get('password') or ''
-    user=User.query.filter_by(email=email,active=True).first()
+    user=User.query.filter_by(email=email).first()
     if not user or not user.check_password(password): return jsonify({'error':'Email or password is incorrect'}),401
+    if not user.active: return jsonify({'error':'Your account is awaiting administrator approval'}),403
     login_user(user)
     return jsonify({'user':user.to_dict()})
 
