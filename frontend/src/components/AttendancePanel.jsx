@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { QRCodeSVG } from "qrcode.react";
-import { Html5QrcodeScanner } from "html5-qrcode";
 import { api } from "../services/api";
 
 export default function AttendancePanel({ role }) {
@@ -55,23 +54,31 @@ export default function AttendancePanel({ role }) {
 
   useEffect(() => {
     if (role !== "student") return undefined;
-    const scanner = new Html5QrcodeScanner("apms-qr-reader", { fps: 10, qrbox: { width: 230, height: 230 } }, false);
-    scanner.render(async (decodedText) => {
-      try {
-        setBusy(true);
-        const result = await api("/attendance/check-in", {
-          method: "POST",
-          body: JSON.stringify({ token: decodedText }),
-        });
-        setMessage(result.message + " — " + result.course);
-        scanner.clear().catch(() => {});
-      } catch (error) {
-        setMessage(error.message);
-      } finally {
-        setBusy(false);
-      }
-    }, () => {});
-    return () => scanner.clear().catch(() => {});
+    let scanner;
+    let cancelled = false;
+    import("html5-qrcode").then(({ Html5QrcodeScanner }) => {
+      if (cancelled) return;
+      scanner = new Html5QrcodeScanner("apms-qr-reader", { fps: 10, qrbox: { width: 230, height: 230 } }, false);
+      scanner.render(async (decodedText) => {
+        try {
+          setBusy(true);
+          const result = await api("/attendance/check-in", {
+            method: "POST",
+            body: JSON.stringify({ token: decodedText }),
+          });
+          setMessage(result.message + " — " + result.course);
+          scanner.clear().catch(() => {});
+        } catch (error) {
+          setMessage(error.message);
+        } finally {
+          setBusy(false);
+        }
+      }, () => {});
+    }).catch((error) => setMessage("Camera scanner could not load: " + error.message));
+    return () => {
+      cancelled = true;
+      scanner?.clear().catch(() => {});
+    };
   }, [role]);
 
   async function startSession() {
