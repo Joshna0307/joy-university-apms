@@ -19,7 +19,7 @@ export default function AcademicPanel({ role }) {
   const [busy, setBusy] = useState(false);
   const [transcript, setTranscript] = useState(null);
   const [activeAssessment, setActiveAssessment] = useState(null);
-  const [roster, setRoster] = useState([]);
+  const [roster, setRoster] = useState([]);\n  const [submissionList, setSubmissionList] = useState([]);\n  const [activeAssignment, setActiveAssignment] = useState(null);
 
   async function load() {
     setError("");
@@ -46,6 +46,13 @@ export default function AcademicPanel({ role }) {
       await load();
       return result;
     } catch (e) { setError(e.message); return null; }
+    finally { setBusy(false); }
+  }
+
+  async function loadSubmissions(assignment) {
+    setBusy(true); setError(""); setActiveAssignment(assignment);
+    try { const data = await api(`/academics/assignments/${assignment.id}/submissions`); setSubmissionList(data.submissions || []); }
+    catch (e) { setError(e.message); setSubmissionList([]); }
     finally { setBusy(false); }
   }
 
@@ -86,7 +93,7 @@ export default function AcademicPanel({ role }) {
           <label>Instructions<textarea value={form.instructions||""} onChange={e=>setForm(v=>({...v,instructions:e.target.value}))}/></label>
           <label>Due date & time<input required type="datetime-local" value={form.due_at||""} onChange={e=>setForm(v=>({...v,due_at:e.target.value}))}/></label><button disabled={busy}>Publish assignment</button>
         </form>}
-        <div className="academic-list"><h4>{role==="faculty"?"Published assignments":"Assignments for your courses"}</h4>{assignments.length?assignments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · Due {dateLabel(a.due_at)}</small>{a.instructions&&<p>{a.instructions}</p>}</div>{role==="student"&&<form onSubmit={e=>{e.preventDefault();act(`/academics/assignments/${a.id}/submit`,"POST",{file_url:form[`url_${a.id}`]});}}><input type="url" required placeholder="Paste your submission link" value={form[`url_${a.id}`]||""} onChange={e=>setForm(v=>({...v,[`url_${a.id}`]:e.target.value}))}/><button disabled={busy}>Submit link</button></form>}</article>):<p className="muted">No assignments available yet.</p>}</div>
+        <div className="academic-list"><h4>{role==="faculty"?"Published assignments":"Assignments for your courses"}</h4>{assignments.length?assignments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · Due {dateLabel(a.due_at)}</small>{a.instructions&&<p>{a.instructions}</p>}</div>{role==="student"&&<form onSubmit={e=>{e.preventDefault();act(`/academics/assignments/${a.id}/submit`,"POST",{file_url:form[`url_${a.id}`]});}}><input type="url" required placeholder="Paste your submission link" value={form[`url_${a.id}`]||""} onChange={e=>setForm(v=>({...v,[`url_${a.id}`]:e.target.value}))}/><button disabled={busy}>Submit link</button></form>}{role==="faculty"&&<button type="button" onClick={()=>loadSubmissions(a)}>View submissions</button>}</article>):<p className="muted">No assignments available yet.</p>}{role==="faculty"&&activeAssignment&&<div className="mark-roster"><h4>Submissions: {activeAssignment.title}</h4>{submissionList.length?submissionList.map((s,i)=><div className="mark-row" key={s.register_number+"-"+i}><div><b>{s.student}</b><small>{s.register_number} · {dateLabel(s.submitted_at)}</small></div><a href={s.file_url} target="_blank" rel="noreferrer">Open submission ↗</a></div>):<p className="muted">No submissions received yet.</p>}</div>}</div>
       </div>}
       {tab==="assessments"&&role==="faculty"&&<div className="academic-grid"><form className="academic-form" onSubmit={e=>{e.preventDefault();act("/academics/assessments","POST",{course_id:Number(form.course_id),semester_id:Number(form.semester_id),title:form.title,assessment_type:form.assessment_type||"internal",max_marks:Number(form.max_marks)});}}><h4>Create assessment</h4>
         <label>Course<select required value={form.course_id||""} onChange={e=>setForm(v=>({...v,course_id:e.target.value}))}><option value="">Select course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}</select></label>
