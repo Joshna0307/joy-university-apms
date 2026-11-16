@@ -114,3 +114,12 @@
 @media(max-width:950px){.academic-grid{grid-template-columns:1fr}}
 @media(max-width:600px){.academic-item{align-items:flex-start;flex-direction:column}.academic-item form{width:100%;max-width:none}.academic-item form input{flex:1}.transcript-paper{padding:15px}}
 @media print{body{background:white}.sidebar,.content>header,.welcome,.attendance-panel,.academic-heading,.academic-tabs,.academic-panel:not(.printing),.admin-panel,.content>h3,.grid,.note,.print-button{display:none!important}.content{margin:0;padding:0;max-width:none}.academic-panel{border:0;box-shadow:none;margin:0;padding:0}.transcript-paper{border:0;max-width:none}}
+
+.ptm-request{display:grid;gap:10px;padding:15px;margin-bottom:18px;background:#f8fafc;border:1px solid #e8edf3;border-radius:10px;max-width:420px}
+.ptm-request h4{margin:0 0 4px}
+.ptm-request label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#53627a}
+.ptm-request select{height:39px;border:1px solid #dce2eb;border-radius:7px;padding:0 10px;background:#fff}
+.ptm-request button{justify-self:start;border:0;border-radius:8px;background:#172b4d;color:white;padding:10px 13px;font-size:11px;font-weight:700}
+.feedback-form{max-width:520px}
+.anonymous-check{display:flex!important;align-items:center;gap:8px!important}
+.anonymous-check input{width:16px;height:16px;min-height:16px}
