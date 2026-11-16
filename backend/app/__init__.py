@@ -13,8 +13,8 @@ def create_app():
     login_manager.init_app(app)
     CORS(app, supports_credentials=True, origins=[os.getenv('FRONTEND_ORIGIN','http://localhost:5173')])
     from app.models import User
-    from app.routes.auth import auth_bp
-    app.register_blueprint(auth_bp,url_prefix='/api/auth')
+    from app.routes.auth import auth_bp\n    from app.routes.dashboard import dashboard_bp
+    app.register_blueprint(auth_bp,url_prefix='/api/auth')\n    app.register_blueprint(dashboard_bp,url_prefix='/api/dashboard')
     @app.get('/api/health')
     def health(): return jsonify({'status':'ok','service':'joy-university-apms-api'})
     with app.app_context(): db.create_all()
