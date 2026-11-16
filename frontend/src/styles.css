@@ -150,3 +150,9 @@
 .warning-action button{border:0;border-radius:7px;background:#172b4d;color:white;padding:9px 11px;font-size:10px;font-weight:700;white-space:nowrap}
 .warning-item select{border:1px solid #dce2eb;border-radius:7px;padding:8px;font-size:11px;background:white}
 @media(max-width:700px){.warning-item{align-items:flex-start;flex-direction:column}.warning-action{width:100%;max-width:none}}
+
+.summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin:18px 0 4px}
+.summary-card{background:#fff;border:1px solid #e7ebf2;border-radius:12px;padding:16px}
+.summary-card small{display:block;color:#8490a2;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
+.summary-card strong{display:block;font:700 25px Manrope;color:#172b4d;margin-top:8px}
+@media(max-width:800px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
