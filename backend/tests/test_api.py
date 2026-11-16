@@ -7,7 +7,7 @@ os.environ["FLASK_ENV"] = "testing"
 import pytest
 
 from app import create_app, db
-from app.models import Course, Department, Enrollment, Faculty, Semester, Student, User
+from app.models import Course, Enrollment, Faculty, Semester, Student, User
 
 
 @pytest.fixture()
@@ -52,14 +52,14 @@ def test_student_registration_requires_admin_approval(client, app):
     assert blocked.status_code == 403
 
     with app.app_context():
-        admin = make_user("Admin", "admin@joyuniversity.edu.in", "admin")
-        admin_id = admin.id
+        make_user("Admin", "admin@joyuniversity.edu.in", "admin")
+        pending_user_id = User.query.filter_by(email="teststudent@joyuniversity.edu.in").first().id
     assert client.post("/api/auth/login", json={
         "email": "admin@joyuniversity.edu.in",
         "password": "TestPassword123!",
     }).status_code == 200
 
-    approved = client.post(f"/api/admin/pending-registrations/{1}/approve")
+    approved = client.post(f"/api/admin/pending-registrations/{pending_user_id}/approve")
     assert approved.status_code == 200
     assert client.post("/api/auth/logout").status_code == 200
     active = client.post("/api/auth/login", json={
