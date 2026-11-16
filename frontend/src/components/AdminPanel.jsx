@@ -19,7 +19,10 @@ export default function AdminPanel() {
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState(null);
   const config = sections[active];
+  const visibleFields = editingId === null ? fields : fields.filter((field) => field.name !== "password");
+  const singularLabel = { departments: "department", courses: "course", students: "student", faculty: "faculty member", semesters: "semester", enrollments: "enrollment" }[active];
   const listKey = active;
   const fields = useMemo(() => config.fields, [config]);
 
@@ -41,12 +44,27 @@ export default function AdminPanel() {
 
   useEffect(() => {
     setValues({});
+    setEditingId(null);
     setNotice("");
     load();
   }, [active]);
 
+  function beginEdit(row) {
+    if (active === "enrollments") return;
+    setEditingId(row.id);
+    setValues(Object.fromEntries(fields.filter((field) => field.name !== "password").map((field) => [field.name, row[field.name] ?? ""])));
+    setError("");
+    setNotice("");
+  }
+
+  function cancelEdit() {
+    setEditingId(null);
+    setValues({});
+  }
+
   async function submit(event) {
     event.preventDefault();
+    const isEditing = editingId !== null;
     setLoading(true);
     setError("");
     setNotice("");
@@ -56,9 +74,11 @@ export default function AdminPanel() {
     ["student_id", "course_id", "semester_id", "faculty_id", "number"].forEach((key) => { if (payload[key]) payload[key] = Number(payload[key]); });
     if (payload.credits) payload.credits = Number(payload.credits);
     try {
-      await api(config.endpoint, { method: "POST", body: JSON.stringify(payload) });
+      const path = isEditing ? `${config.endpoint}/${editingId}` : config.endpoint;
+      await api(path, { method: isEditing ? "PATCH" : "POST", body: JSON.stringify(payload) });
       setValues({});
-      setNotice(`${config.label.slice(0, -1) || config.label} added successfully.`);
+      setEditingId(null);
+      setNotice(`${singularLabel} ${isEditing ? "updated" : "added"} successfully.`);
       await load();
     } catch (e) {
       setError(e.message);
@@ -75,8 +95,8 @@ export default function AdminPanel() {
       </div>
       <div className="admin-workspace">
         <form className="admin-form" onSubmit={submit}>
-          <h4>Add {config.label.slice(0, -1).toLowerCase()}</h4>
-          {fields.map((field) => (
+          <h4>{editingId === null ? `Add ${singularLabel}` : `Edit ${singularLabel}`}</h4>
+          {visibleFields.map((field) => (
             <label key={field.name}>{field.label}
               {["department","student","faculty","course","semester"].includes(field.type) ? (
                 <select value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}>
@@ -88,15 +108,16 @@ export default function AdminPanel() {
               )}
             </label>
           ))}
-          <button disabled={loading}>{loading ? "Saving…" : "Save record"}</button>
-          <small>Passwords are saved as secure hashes and are never displayed in the records table.</small>
+          <button disabled={loading}>{loading ? "Saving…" : editingId === null ? "Save record" : "Update record"}</button>
+          {editingId !== null && <button type="button" className="refresh-button" onClick={cancelEdit} disabled={loading}>Cancel edit</button>}
+          <small>Passwords are saved as secure hashes and are never displayed in the records table. Existing passwords cannot be viewed or edited here.</small>
         </form>
         <div className="admin-records">
           <div className="records-heading"><h4>{config.label}</h4><span>{records.length} records</span></div>
           {error && <p className="admin-error" role="alert">{error}</p>}
           {notice && <p className="admin-notice" role="status">{notice}</p>}
           {loading && !records.length ? <p className="muted">Loading records…</p> : records.length ? (
-            <div className="records-table-wrap"><table className="records-table"><thead><tr>{config.columns.map(([, label]) => <th key={label}>{label}</th>)}</tr></thead><tbody>{records.map((row) => <tr key={row.id}>{config.columns.map(([key]) => <td key={key}>{row[key] ?? "—"}</td>)}</tr>)}</tbody></table></div>
+            <div className="records-table-wrap"><table className="records-table"><thead><tr>{config.columns.map(([, label]) => <th key={label}>{label}</th>)}{active !== "enrollments" && <th>Actions</th>}</tr></thead><tbody>{records.map((row) => <tr key={row.id}>{config.columns.map(([key]) => <td key={key}>{row[key] ?? "—"}</td>)}{active !== "enrollments" && <td><button type="button" className="refresh-button" onClick={() => beginEdit(row)}>Edit</button></td>}</tr>)}</tbody></table></div>
           ) : <p className="muted empty-records">No {config.label.toLowerCase()} added yet.</p>}
         </div>
       </div>
