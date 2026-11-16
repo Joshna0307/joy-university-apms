@@ -156,7 +156,7 @@ class PTMMeeting(TimestampMixin, db.Model):
 class FacultyFeedback(TimestampMixin, db.Model):
     __tablename__ = "faculty_feedback"
     id = db.Column(db.Integer, primary_key=True)
-    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
+    student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=True)
     faculty_id = db.Column(db.Integer, db.ForeignKey("faculty.id"), nullable=False)
     teaching_clarity = db.Column(db.Integer, nullable=False)
     punctuality_coverage = db.Column(db.Integer, nullable=False)
