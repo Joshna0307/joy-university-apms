@@ -13,14 +13,18 @@ A role-based academic portal foundation for Joy University, built with React, Fl
 
 ## Current implementation status
 - Role-aware sign-in shell for Admin, Faculty and Student.
-- Flask authentication and role-protected API foundation.
-- Academic database models for students, faculty, courses, semesters, enrollments, attendance, assessments, assignments, PTM, feedback, remediation and transcript verification.
+- Secure administrator bootstrap script; no default credentials are committed.
+- Admin APIs and screens for departments, courses, students, faculty, semesters and course enrollments.
 - Role-specific dashboard summary API.
-- QR attendance: faculty creates a five-minute course QR; students scan and check in; backend checks enrollment, expiry and duplicate attendance; faculty dashboard shows a live check-in list that refreshes every three seconds.
-- Deployment configuration templates for Vercel and Render.
+- QR attendance: faculty creates a five-minute course QR; students scan and check in; backend checks enrollment, expiry and duplicate attendance; faculty sees a live check-in list refreshing every three seconds.
+- Assignment creation and student link submissions.
+- Assessment creation, faculty mark entry and student results view.
+- PTM request, faculty scheduling and meeting status view.
+- Student faculty feedback with five rating categories and optional anonymous submission.
+- Student transcript view with estimated CGPA, verification code and print-to-PDF support.
+- Vercel and Render deployment templates plus GitHub Actions frontend-build and backend-syntax checks.
 
-**Not yet complete:** full admin CRUD screens, marks and assignment workflows, PTM screens, feedback workflows, transcript PDF/QR verification, early-warning management, production database migrations and end-to-end tests. Do not use this starter as a production university records system until these are completed and reviewed.
-
+**Still required before production use:** verify CI results and fix any failures; complete end-to-end testing with synthetic accounts; add robust schema migrations; review audit logging, backups, account password reset, privacy and institutional approval; verify the university's official grading and transcript rules. The transcript CGPA is explicitly an estimate from recorded marks, not an official university result. Assignment submissions currently store a link, not an uploaded file.
 ## Local setup (Windows PowerShell)
 
 ### 1. Backend
