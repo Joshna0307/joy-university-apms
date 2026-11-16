@@ -25,6 +25,7 @@ def admin_dashboard():
             "courses": db.session.query(func.count(Course.id)).scalar() or 0,
             "open_remediations": db.session.query(func.count(Remediation.id)).filter(Remediation.status == "Open").scalar() or 0,
             "pending_ptm": db.session.query(func.count(PTMMeeting.id)).filter(PTMMeeting.status == "Requested").scalar() or 0,
+            "pending_registrations": db.session.query(func.count(User.id)).filter(User.role == "student", User.active.is_(False)).scalar() or 0,
         }
     })
 
