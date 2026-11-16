@@ -25,11 +25,13 @@ def create_app():
     from app.routes.dashboard import dashboard_bp
     from app.routes.attendance import attendance_bp
     from app.routes.admin import admin_bp
+    from app.routes.academics import academics_bp
 
     app.register_blueprint(auth_bp, url_prefix="/api/auth")
     app.register_blueprint(dashboard_bp, url_prefix="/api/dashboard")
     app.register_blueprint(attendance_bp, url_prefix="/api/attendance")
     app.register_blueprint(admin_bp, url_prefix="/api/admin")
+    app.register_blueprint(academics_bp, url_prefix="/api/academics")
 
     @app.get("/api/health")
     def health():
