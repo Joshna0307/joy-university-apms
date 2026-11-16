@@ -21,10 +21,10 @@ export default function AdminPanel() {
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState(null);
   const config = sections[active];
-  const visibleFields = editingId === null ? fields : fields.filter((field) => field.name !== "password");
-  const singularLabel = { departments: "department", courses: "course", students: "student", faculty: "faculty member", semesters: "semester", enrollments: "enrollment" }[active];
   const listKey = active;
   const fields = useMemo(() => config.fields, [config]);
+  const visibleFields = editingId === null ? fields : fields.filter((field) => field.name !== "password");
+  const singularLabel = { departments: "department", courses: "course", students: "student", faculty: "faculty member", semesters: "semester", enrollments: "enrollment" }[active];
 
   async function load() {
     setLoading(true);
