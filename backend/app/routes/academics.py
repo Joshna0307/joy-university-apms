@@ -153,6 +153,29 @@ def create_assessment():
     return jsonify({"assessment_id": row.id, "message": "Assessment created"}), 201
 
 
+@academics_bp.get("/assessments/<int:assessment_id>/students")
+@login_required
+@roles_required("faculty")
+def assessment_students(assessment_id):
+    faculty = Faculty.query.filter_by(user_id=current_user.id).first()
+    assessment = db.session.get(Assessment, assessment_id)
+    if not faculty or not assessment or not _faculty_owns_course(faculty.id, assessment.course_id):
+        return jsonify({"error": "Assessment not found or course not assigned"}), 404
+    rows = (
+        db.session.query(Student, User, Mark)
+        .join(User, User.id == Student.user_id)
+        .join(Enrollment, Enrollment.student_id == Student.id)
+        .outerjoin(Mark, (Mark.student_id == Student.id) & (Mark.assessment_id == assessment.id))
+        .filter(Enrollment.course_id == assessment.course_id, Enrollment.semester_id == assessment.semester_id)
+        .order_by(Student.register_number)
+        .all()
+    )
+    return jsonify({"students": [{
+        "id": student.id, "name": user.name, "register_number": student.register_number,
+        "score": float(mark.score) if mark else None,
+    } for student, user, mark in rows]})
+
+
 @academics_bp.post("/assessments/<int:assessment_id>/marks")
 @login_required
 @roles_required("faculty")
