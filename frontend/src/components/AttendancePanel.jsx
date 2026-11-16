@@ -32,7 +32,7 @@ export default function AttendancePanel({ role }) {
   }, [session?.expires_at]);
 
   useEffect(() => {
-    if (role !== "faculty" || !session?.session_id) return undefined;
+    if (role !== "faculty" || !session?.session_id || session.expired) return undefined;
     let cancelled = false;
     const refresh = async () => {
       try {
@@ -51,7 +51,7 @@ export default function AttendancePanel({ role }) {
       cancelled = true;
       window.clearInterval(timer);
     };
-  }, [role, session?.session_id]);
+  }, [role, session?.session_id, session?.expired]);
 
   useEffect(() => {
     if (role !== "student") return undefined;
