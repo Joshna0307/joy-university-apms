@@ -163,3 +163,36 @@ def close_session(session_id):
     session.is_open = False
     db.session.commit()
     return jsonify({"message": "Attendance QR session closed"})
+
+@attendance_bp.get("/courses")
+@login_required
+@roles_required("faculty", "student")
+def my_attendance_courses():
+    if current_user.role == "faculty":
+        profile = _faculty_profile()
+        if profile is None:
+            return jsonify({"error": "Faculty profile has not been created"}), 404
+        rows = (
+            db.session.query(Course)
+            .join(Enrollment, Enrollment.course_id == Course.id)
+            .filter(Enrollment.faculty_id == profile.id)
+            .distinct()
+            .order_by(Course.code)
+            .all()
+        )
+    else:
+        profile = Student.query.filter_by(user_id=current_user.id).first()
+        if profile is None:
+            return jsonify({"error": "Student profile has not been created"}), 404
+        rows = (
+            db.session.query(Course)
+            .join(Enrollment, Enrollment.course_id == Course.id)
+            .filter(Enrollment.student_id == profile.id)
+            .distinct()
+            .order_by(Course.code)
+            .all()
+        )
+    return jsonify({"courses": [
+        {"id": course.id, "code": course.code, "title": course.title}
+        for course in rows
+    ]})
