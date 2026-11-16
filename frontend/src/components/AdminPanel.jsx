@@ -5,13 +5,13 @@ const sections = {
   departments: { label: "Departments", endpoint: "/admin/departments", fields: [{ name: "name", label: "Department name" }, { name: "code", label: "Department code" }], columns: [["name", "Department"], ["code", "Code"]] },
   courses: { label: "Courses", endpoint: "/admin/courses", fields: [{ name: "code", label: "Course code" }, { name: "title", label: "Course title" }, { name: "credits", label: "Credits", type: "number" }, { name: "department_id", label: "Department", type: "department" }], columns: [["code", "Code"], ["title", "Course"], ["credits", "Credits"]] },
   students: { label: "Students", endpoint: "/admin/students", fields: [{ name: "name", label: "Full name" }, { name: "email", label: "University email", type: "email" }, { name: "register_number", label: "Register number" }, { name: "password", label: "Initial password (12+ characters)", type: "password" }, { name: "department_id", label: "Department", type: "department" }, { name: "batch", label: "Batch (e.g. 2026–2030)" }, { name: "semester", label: "Current semester", type: "number" }], columns: [["register_number", "Register no."], ["name", "Student"], ["email", "Email"], ["semester", "Semester"]] },
-  faculty: { label: "Faculty", endpoint: "/admin/faculty", fields: [{ name: "name", label: "Full name" }, { name: "email", label: "University email", type: "email" }, { name: "employee_number", label: "Employee number" }, { name: "password", label: "Initial password (12+ characters)", type: "password" }, { name: "department_id", label: "Department", type: "department" }], columns: [["employee_number", "Employee no."], ["name", "Faculty"], ["email", "Email"]] },
+  faculty: { label: "Faculty", endpoint: "/admin/faculty", fields: [{ name: "name", label: "Full name" }, { name: "email", label: "University email", type: "email" }, { name: "employee_number", label: "Employee number" }, { name: "password", label: "Initial password (12+ characters)", type: "password" }, { name: "department_id", label: "Department", type: "department" }], columns: [["employee_number", "Employee no."], ["name", "Faculty"], ["email", "Email"]] },\n  semesters: { label: "Semesters", endpoint: "/admin/semesters", fields: [{ name: "name", label: "Semester name" }, { name: "academic_year", label: "Academic year (e.g. 2026–2027)" }, { name: "number", label: "Semester number", type: "number" }], columns: [["name", "Semester"], ["academic_year", "Academic year"], ["number", "Number"]] },\n  enrollments: { label: "Enrollments", endpoint: "/admin/enrollments", fields: [{ name: "student_id", label: "Student", type: "student" }, { name: "course_id", label: "Course", type: "course" }, { name: "semester_id", label: "Semester", type: "semester" }, { name: "faculty_id", label: "Assigned faculty (optional)", type: "faculty" }], columns: [["register_number", "Register no."], ["student", "Student"], ["course", "Course"], ["semester", "Semester"], ["faculty", "Faculty"]] },
 };
 
 export default function AdminPanel() {
   const [active, setActive] = useState("students");
   const [records, setRecords] = useState([]);
-  const [departments, setDepartments] = useState([]);
+  const [departments, setDepartments] = useState([]);\n  const [lookups, setLookups] = useState({ students: [], faculty: [], courses: [], semesters: [] });
   const [values, setValues] = useState({});
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
@@ -52,7 +52,7 @@ export default function AdminPanel() {
     setNotice("");
     const payload = { ...values };
     if (payload.department_id) payload.department_id = Number(payload.department_id);
-    if (payload.semester) payload.semester = Number(payload.semester);
+    if (payload.semester) payload.semester = Number(payload.semester);\n    ["student_id", "course_id", "semester_id", "faculty_id", "number"].forEach((key) => { if (payload[key]) payload[key] = Number(payload[key]); });
     if (payload.credits) payload.credits = Number(payload.credits);
     try {
       await api(config.endpoint, { method: "POST", body: JSON.stringify(payload) });
@@ -77,13 +77,13 @@ export default function AdminPanel() {
           <h4>Add {config.label.slice(0, -1).toLowerCase()}</h4>
           {fields.map((field) => (
             <label key={field.name}>{field.label}
-              {field.type === "department" ? (
+              {["department","student","faculty","course","semester"].includes(field.type) ? (
                 <select value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}>
                   <option value="">No department selected</option>
                   {departments.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
                 </select>
               ) : (
-                <input type={field.type || "text"} min={field.type === "number" ? "1" : undefined} step={field.name === "credits" ? "0.5" : undefined} required={!["department_id", "batch", "semester"].includes(field.name)} minLength={field.name === "password" ? 12 : undefined} value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))} />
+                <input type={field.type || "text"} min={field.type === "number" ? "1" : undefined} step={field.name === "credits" ? "0.5" : undefined} required={!["department_id", "batch", "semester", "faculty_id"].includes(field.name)} minLength={field.name === "password" ? 12 : undefined} value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))} />
               )}
             </label>
           ))}
