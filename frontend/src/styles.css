@@ -123,3 +123,13 @@
 .feedback-form{max-width:520px}
 .anonymous-check{display:flex!important;align-items:center;gap:8px!important}
 .anonymous-check input{width:16px;height:16px;min-height:16px}
+
+.mark-roster{margin-top:18px;padding:14px;border:1px solid #e8edf3;border-radius:10px;background:#f8fafc}
+.mark-roster h4{margin:0 0 10px;font:700 13px Manrope}
+.mark-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid #e8edf3}
+.mark-row:last-child{border-bottom:0}
+.mark-row>div{flex:1;min-width:0}
+.mark-row b{font-size:11px}
+.mark-row small{display:block;font-size:10px;color:#8490a2;margin-top:4px}
+.mark-row input{width:90px;min-height:36px;border:1px solid #dce2eb;border-radius:7px;padding:6px}
+.mark-row button{border:0;border-radius:7px;background:#172b4d;color:white;padding:9px 12px;font-size:10px;font-weight:700}
