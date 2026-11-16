@@ -22,7 +22,7 @@ export default function AttendancePanel({ role }) {
     const tick = () => {
       const remaining = Math.max(0, Math.ceil((new Date(session.expires_at).getTime() - Date.now()) / 1000));
       setSecondsLeft(remaining);
-      if (remaining === 0) setSession((current) => current ? { ...current, expired: true } : current);
+      if (remaining === 0) setSession((current) => current && !current.expired ? { ...current, expired: true } : current);
     };
     tick();
     const timer = window.setInterval(tick, 1000);
