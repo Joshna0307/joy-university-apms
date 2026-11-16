@@ -29,12 +29,9 @@ export default function AdminPanel() {
     try {
       const data = await api(config.endpoint);
       setRecords(data[listKey] || []);
-      if (active !== "departments") {
-        const deptData = await api("/admin/departments");
-        setDepartments(deptData.departments || []);
-      } else {
-        setDepartments(data.departments || []);
-      }
+      const [deptData, studentData, facultyData, courseData, semesterData] = await Promise.all([api("/admin/departments"), api("/admin/students"), api("/admin/faculty"), api("/admin/courses"), api("/admin/semesters")]);
+      setDepartments(deptData.departments || []);
+      setLookups({ students: studentData.students || [], faculty: facultyData.faculty || [], courses: courseData.courses || [], semesters: semesterData.semesters || [] });
     } catch (e) {
       setError(e.message);
     } finally {
@@ -83,8 +80,8 @@ export default function AdminPanel() {
             <label key={field.name}>{field.label}
               {["department","student","faculty","course","semester"].includes(field.type) ? (
                 <select value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}>
-                  <option value="">No department selected</option>
-                  {departments.map((d) => <option key={d.id} value={d.id}>{d.code} — {d.name}</option>)}
+                  <option value="">{field.type === "faculty" ? "No faculty selected" : `Select ${field.type}`}</option>
+                  {(field.type === "department" ? departments : lookups[field.type] || []).map((d) => <option key={d.id} value={d.id}>{field.type === "department" ? `${d.code} — ${d.name}` : field.type === "student" ? `${d.register_number} — ${d.name}` : field.type === "faculty" ? `${d.employee_number} — ${d.name}` : field.type === "course" ? `${d.code} — ${d.title}` : `${d.name} (${d.academic_year})`}</option>)}
                 </select>
               ) : (
                 <input type={field.type || "text"} min={field.type === "number" ? "1" : undefined} step={field.name === "credits" ? "0.5" : undefined} required={!["department_id", "batch", "semester", "faculty_id"].includes(field.name)} minLength={field.name === "password" ? 12 : undefined} value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))} />
