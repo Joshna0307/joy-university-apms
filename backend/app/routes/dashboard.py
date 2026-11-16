@@ -31,7 +31,7 @@ def admin_dashboard():
 
 @dashboard_bp.get("/faculty")
 @login_required
-@roles_required("faculty", "admin")
+@roles_required("faculty")
 def faculty_dashboard():
     profile = Faculty.query.filter_by(user_id=current_user.id).first()
     if profile is None:
@@ -55,7 +55,7 @@ def faculty_dashboard():
 
 @dashboard_bp.get("/student")
 @login_required
-@roles_required("student", "admin")
+@roles_required("student")
 def student_dashboard():
     profile = Student.query.filter_by(user_id=current_user.id).first()
     if profile is None:
