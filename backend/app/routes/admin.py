@@ -287,6 +287,7 @@ def update_student(student_id):
         if "department_id" in data:
             department_id = _optional_int(data["department_id"], "Department ID")
             if department_id and db.session.get(Department, department_id) is None:
+                db.session.rollback()
                 return jsonify({"error": "Selected department was not found"}), 404
             row.department_id = department_id
         if "batch" in data:
@@ -324,6 +325,7 @@ def update_faculty(faculty_id):
         if "email" in data:
             email = _required(data, "email", "University email").lower()
             if User.query.filter(User.email == email, User.id != row.user_id).first():
+                db.session.rollback()
                 return jsonify({"error": "Email is already in use"}), 409
             row.user.email = email
         if "employee_number" in data:
@@ -331,6 +333,7 @@ def update_faculty(faculty_id):
         if "department_id" in data:
             department_id = _optional_int(data["department_id"], "Department ID")
             if department_id and db.session.get(Department, department_id) is None:
+                db.session.rollback()
                 return jsonify({"error": "Selected department was not found"}), 404
             row.department_id = department_id
         db.session.commit()
