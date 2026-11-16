@@ -48,5 +48,13 @@ def create_app():
         return jsonify({"status": "ok", "database": "connected", "service": "joy-university-apms-api"})
 
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as exc:
+            # Multiple serverless instances can initialize at the same time.
+            # Ignore only PostgreSQL's duplicate-table race; surface other failures.
+            db.session.rollback()
+            original = getattr(exc, "orig", None)
+            if getattr(original, "sqlstate", None) != "42P07":
+                raise
     return app
