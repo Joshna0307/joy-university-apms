@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.authz import roles_required
-from app.models import Course, Department, Faculty, Student, User
+from app.models import Course, Department, Enrollment, Faculty, Semester, Student, User
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -173,3 +173,86 @@ def create_faculty():
         db.session.rollback()
         return jsonify({"error": "Email or employee number already exists"}), 409
     return jsonify({"faculty": {"id": row.id, "name": user.name, "email": user.email, "employee_number": row.employee_number}}), 201
+
+
+@admin_bp.get("/semesters")
+@login_required
+@roles_required("admin")
+def list_semesters():
+    rows = Semester.query.order_by(Semester.academic_year, Semester.number).all()
+    return jsonify({"semesters": [{"id": x.id, "name": x.name, "academic_year": x.academic_year, "number": x.number} for x in rows]})
+
+
+@admin_bp.post("/semesters")
+@login_required
+@roles_required("admin")
+def create_semester():
+    data = request.get_json(silent=True) or {}
+    try:
+        name = _required(data, "name", "Semester name")
+        academic_year = _required(data, "academic_year", "Academic year")
+        number = int(data.get("number"))
+        if number < 1 or number > 12:
+            raise ValueError
+        row = Semester(name=name, academic_year=academic_year, number=number)
+        db.session.add(row)
+        db.session.commit()
+    except (ValueError, TypeError):
+        db.session.rollback()
+        return jsonify({"error": "Enter a valid semester name, academic year and semester number (1–12)"}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Could not create semester"}), 409
+    return jsonify({"semester": {"id": row.id, "name": row.name, "academic_year": row.academic_year, "number": row.number}}), 201
+
+
+@admin_bp.get("/enrollments")
+@login_required
+@roles_required("admin")
+def list_enrollments():
+    rows = Enrollment.query.order_by(Enrollment.id.desc()).all()
+    result = []
+    for row in rows:
+        student = db.session.get(Student, row.student_id)
+        course = db.session.get(Course, row.course_id)
+        semester = db.session.get(Semester, row.semester_id)
+        faculty = db.session.get(Faculty, row.faculty_id) if row.faculty_id else None
+        result.append({
+            "id": row.id,
+            "student": student.user.name if student else "Student",
+            "register_number": student.register_number if student else "",
+            "course": course.code if course else "Course",
+            "semester": semester.name if semester else "Semester",
+            "faculty": faculty.user.name if faculty else "Not assigned",
+        })
+    return jsonify({"enrollments": result})
+
+
+@admin_bp.post("/enrollments")
+@login_required
+@roles_required("admin")
+def create_enrollment():
+    data = request.get_json(silent=True) or {}
+    try:
+        student_id = int(data.get("student_id"))
+        course_id = int(data.get("course_id"))
+        semester_id = int(data.get("semester_id"))
+        faculty_id = _optional_int(data.get("faculty_id"), "Faculty ID")
+    except (TypeError, ValueError) as error:
+        return jsonify({"error": str(error) or "Select a student, course and semester"}), 400
+    student = db.session.get(Student, student_id)
+    course = db.session.get(Course, course_id)
+    semester = db.session.get(Semester, semester_id)
+    faculty = db.session.get(Faculty, faculty_id) if faculty_id else None
+    if not student or not course or not semester:
+        return jsonify({"error": "Student, course or semester record was not found"}), 404
+    if faculty_id and not faculty:
+        return jsonify({"error": "Faculty record was not found"}), 404
+    row = Enrollment(student_id=student_id, course_id=course_id, semester_id=semester_id, faculty_id=faculty_id)
+    db.session.add(row)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "This student is already enrolled in this course for the selected semester"}), 409
+    return jsonify({"enrollment_id": row.id, "message": "Student enrollment created"}), 201
