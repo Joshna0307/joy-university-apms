@@ -104,7 +104,7 @@ export default function AdminPanel() {
                   {(field.type === "department" ? departments : lookups[field.type] || []).map((d) => <option key={d.id} value={d.id}>{field.type === "department" ? `${d.code} — ${d.name}` : field.type === "student" ? `${d.register_number} — ${d.name}` : field.type === "faculty" ? `${d.employee_number} — ${d.name}` : field.type === "course" ? `${d.code} — ${d.title}` : `${d.name} (${d.academic_year})`}</option>)}
                 </select>
               ) : (
-                <input type={field.type || "text"} min={field.type === "number" ? "1" : undefined} step={field.name === "credits" ? "0.5" : undefined} required={!["department_id", "batch", "semester", "faculty_id"].includes(field.name)} minLength={field.name === "password" ? 12 : undefined} value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))} />
+                <input type={field.type || "text"} min={field.name === "credits" ? "0.5" : field.type === "number" ? "1" : undefined} step={field.name === "credits" ? "0.5" : undefined} required={!["department_id", "batch", "semester", "faculty_id"].includes(field.name)} minLength={field.name === "password" ? 12 : undefined} value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))} />
               )}
             </label>
           ))}
