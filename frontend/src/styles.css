@@ -189,3 +189,5 @@
 .text-button{display:inline!important;width:auto!important;min-height:0!important;padding:0!important;border:0!important;background:transparent!important;color:#2563eb!important;font:700 12px Manrope!important;cursor:pointer!important;box-shadow:none!important}.text-button:hover{text-decoration:underline}
 
 .success-message{font-size:12px;line-height:1.5;color:#276b58;background:#edf8f2;border-radius:8px;padding:10px 12px}
+
+.attendance-warning{margin:14px 0;padding:12px 14px;border:1px solid #f4d5a6;border-radius:9px;background:#fff8eb;color:#925b13;font-size:12px;line-height:1.5}
