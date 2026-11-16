@@ -377,3 +377,34 @@ def feedback_summary():
         })
     result.sort(key=lambda item: item["average_rating"], reverse=True)
     return jsonify({"leaderboard": result})
+
+
+@admin_bp.get("/pending-registrations")
+@login_required
+@roles_required("admin")
+def pending_registrations():
+    rows = (
+        db.session.query(User, Student)
+        .join(Student, Student.user_id == User.id)
+        .filter(User.role == "student", User.active.is_(False))
+        .order_by(User.created_at.asc())
+        .all()
+    )
+    return jsonify({"registrations": [{
+        "user_id": user.id, "name": user.name, "email": user.email,
+        "register_number": student.register_number, "submitted_at": user.created_at.isoformat() + "Z",
+    } for user, student in rows]})
+
+
+@admin_bp.post("/pending-registrations/<int:user_id>/approve")
+@login_required
+@roles_required("admin")
+def approve_registration(user_id):
+    user = db.session.get(User, user_id)
+    if not user or user.role != "student":
+        return jsonify({"error": "Student registration not found"}), 404
+    if user.active:
+        return jsonify({"message": "Student account is already active"})
+    user.active = True
+    db.session.commit()
+    return jsonify({"message": "Student account approved"})
