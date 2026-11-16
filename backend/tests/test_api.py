@@ -7,7 +7,7 @@ os.environ["FLASK_ENV"] = "testing"
 import pytest
 
 from app import create_app, db
-from app.models import Course, Enrollment, Faculty, Semester, Student, User
+from app.models import Course, Department, Enrollment, Faculty, Semester, Student, User
 
 
 @pytest.fixture()
@@ -139,3 +139,70 @@ def test_qr_attendance_checkin_and_duplicate_prevention(client, app):
     assert feed.status_code == 200
     assert feed.get_json()["total_checked_in"] == 1
     assert feed.get_json()["check_ins"][0]["register_number"] == "JU-TEST-004"
+
+
+def test_admin_can_edit_core_records_and_students_cannot(client, app):
+    with app.app_context():
+        admin = make_user("Admin", "admin-edit@joyuniversity.edu.in", "admin")
+        student_user = make_user("Student", "student-edit@joyuniversity.edu.in", "student")
+        student = Student(user_id=student_user.id, register_number="JU-EDIT-001")
+        faculty_user = make_user("Faculty", "faculty-edit@joyuniversity.edu.in", "faculty")
+        faculty = Faculty(user_id=faculty_user.id, employee_number="FAC-EDIT-001")
+        department = Department(name="Computing", code="COMP")
+        course = Course(code="CS100", title="Intro to Computing", credits=3)
+        semester = Semester(name="Semester 1", academic_year="2026-2027", number=1)
+        db.session.add_all([student, faculty, department, course, semester])
+        db.session.commit()
+        ids = {
+            "student": student.id,
+            "faculty": faculty.id,
+            "department": department.id,
+            "course": course.id,
+            "semester": semester.id,
+        }
+
+    assert client.post("/api/auth/login", json={
+        "email": "admin-edit@joyuniversity.edu.in",
+        "password": "TestPassword123!",
+    }).status_code == 200
+
+    department_update = client.patch(f"/api/admin/departments/{ids['department']}", json={
+        "name": "School of Computing", "code": "SOC",
+    })
+    assert department_update.status_code == 200
+    assert department_update.get_json()["department"]["code"] == "SOC"
+
+    course_update = client.patch(f"/api/admin/courses/{ids['course']}", json={
+        "code": "CS101", "title": "Foundations of Computing", "credits": 4,
+        "department_id": ids["department"],
+    })
+    assert course_update.status_code == 200
+    assert course_update.get_json()["course"]["credits"] == 4.0
+
+    student_update = client.patch(f"/api/admin/students/{ids['student']}", json={
+        "name": "Updated Student", "register_number": "JU-EDIT-002",
+        "semester": 2, "department_id": ids["department"],
+    })
+    assert student_update.status_code == 200
+    assert student_update.get_json()["student"]["name"] == "Updated Student"
+
+    faculty_update = client.patch(f"/api/admin/faculty/{ids['faculty']}", json={
+        "name": "Updated Faculty", "employee_number": "FAC-EDIT-002",
+        "department_id": ids["department"],
+    })
+    assert faculty_update.status_code == 200
+    assert faculty_update.get_json()["faculty"]["employee_number"] == "FAC-EDIT-002"
+
+    semester_update = client.patch(f"/api/admin/semesters/{ids['semester']}", json={
+        "name": "Semester One", "academic_year": "2026-2027", "number": 2,
+    })
+    assert semester_update.status_code == 200
+    assert semester_update.get_json()["semester"]["number"] == 2
+
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={
+        "email": "student-edit@joyuniversity.edu.in",
+        "password": "TestPassword123!",
+    }).status_code == 200
+    denied = client.patch(f"/api/admin/courses/{ids['course']}", json={"title": "Unauthorized"})
+    assert denied.status_code == 403
