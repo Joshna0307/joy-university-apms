@@ -10,7 +10,7 @@ from app import db
 from app.authz import roles_required
 from app.models import (
     Assignment, AssignmentSubmission, Assessment, Course, Enrollment,
-    Faculty, FacultyFeedback, Mark, PTMMeeting, Student, TranscriptVerification, User
+    Faculty, FacultyFeedback, Mark, PTMMeeting, Semester, Student, TranscriptVerification, User
 )
 
 academics_bp = Blueprint("academics", __name__)
@@ -147,6 +147,8 @@ def create_assessment():
         return jsonify({"error": "Enter a valid course, semester, title and maximum marks"}), 400
     if not _faculty_owns_course(faculty.id, course_id):
         return jsonify({"error": "You are not assigned to this course"}), 403
+    if db.session.get(Semester, semester_id) is None:
+        return jsonify({"error": "Selected semester was not found"}), 404
     row = Assessment(course_id=course_id, semester_id=semester_id, title=title, assessment_type=assessment_type, max_marks=maximum)
     db.session.add(row)
     db.session.commit()
