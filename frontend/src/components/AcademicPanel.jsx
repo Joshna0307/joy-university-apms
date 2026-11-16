@@ -1,0 +1,84 @@
+import { useEffect, useState } from "react";
+import { api } from "../services/api";
+
+function dateLabel(value) {
+  return value ? new Date(value).toLocaleString([], { dateStyle: "medium", timeStyle: "short" }) : "Not scheduled";
+}
+
+export default function AcademicPanel({ role }) {
+  const [tab, setTab] = useState("assignments");
+  const [courses, setCourses] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [assessments, setAssessments] = useState([]);
+  const [ptm, setPtm] = useState([]);
+  const [form, setForm] = useState({});
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [transcript, setTranscript] = useState(null);
+
+  async function load() {
+    setError("");
+    try {
+      const [courseData, assignmentData, assessmentData, ptmData] = await Promise.all([
+        api("/attendance/courses"), api("/academics/assignments"), api("/academics/assessments"), api("/academics/ptm")
+      ]);
+      setCourses(courseData.courses || []);
+      setAssignments(assignmentData.assignments || []);
+      setAssessments(assessmentData.assessments || []);
+      setPtm(ptmData.meetings || []);
+    } catch (e) { setError(e.message); }
+  }
+
+  useEffect(() => { load(); }, [role]);
+
+  async function act(path, method, payload) {
+    setBusy(true); setError(""); setMessage("");
+    try {
+      const result = await api(path, { method, body: JSON.stringify(payload) });
+      setMessage(result.message || "Saved successfully.");
+      setForm({});
+      await load();
+      return result;
+    } catch (e) { setError(e.message); return null; }
+    finally { setBusy(false); }
+  }
+
+  async function openTranscript() {
+    setBusy(true); setError("");
+    try {
+      setTranscript(await api("/academics/transcript"));
+      setTab("transcript");
+    } catch (e) { setError(e.message); }
+    finally { setBusy(false); }
+  }
+
+  const tabs = role === "faculty" ? [["assignments","Assignments"],["assessments","Assessments"],["ptm","PTM"]] : [["assignments","Assignments"],["results","My results"],["ptm","PTM"],["transcript","Transcript"]];
+  return (
+    <section className="academic-panel">
+      <div className="academic-heading"><div><p className="eyebrow">TEACHING & LEARNING</p><h3>Academic workspace</h3></div><button className="refresh-button" onClick={load}>Refresh</button></div>
+      <div className="academic-tabs">{tabs.map(([key,label]) => <button type="button" key={key} className={tab===key?"selected":""} onClick={() => key==="transcript" && role==="student" ? openTranscript() : setTab(key)}>{label}</button>)}</div>
+      {error && <p className="academic-error" role="alert">{error}</p>}
+      {message && <p className="academic-notice" role="status">{message}</p>}
+      {tab==="assignments" && <div className="academic-grid">
+        {role==="faculty" && <form className="academic-form" onSubmit={e=>{e.preventDefault();act("/academics/assignments","POST",{course_id:Number(form.course_id),title:form.title,instructions:form.instructions,due_at:form.due_at});}}>
+          <h4>Create assignment</h4><label>Course<select required value={form.course_id||""} onChange={e=>setForm(v=>({...v,course_id:e.target.value}))}><option value="">Select course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}</select></label>
+          <label>Title<input required value={form.title||""} onChange={e=>setForm(v=>({...v,title:e.target.value}))}/></label>
+          <label>Instructions<textarea value={form.instructions||""} onChange={e=>setForm(v=>({...v,instructions:e.target.value}))}/></label>
+          <label>Due date & time<input required type="datetime-local" value={form.due_at||""} onChange={e=>setForm(v=>({...v,due_at:e.target.value}))}/></label><button disabled={busy}>Publish assignment</button>
+        </form>}
+        <div className="academic-list"><h4>{role==="faculty"?"Published assignments":"Assignments for your courses"}</h4>{assignments.length?assignments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · Due {dateLabel(a.due_at)}</small>{a.instructions&&<p>{a.instructions}</p>}</div>{role==="student"&&<form onSubmit={e=>{e.preventDefault();act(`/academics/assignments/${a.id}/submit`,"POST",{file_url:form[`url_${a.id}`]});}}><input type="url" required placeholder="Paste your submission link" value={form[`url_${a.id}`]||""} onChange={e=>setForm(v=>({...v,[`url_${a.id}`]:e.target.value}))}/><button disabled={busy}>Submit link</button></form>}</article>):<p className="muted">No assignments available yet.</p>}</div>
+      </div>}
+      {tab==="assessments"&&role==="faculty"&&<div className="academic-grid"><form className="academic-form" onSubmit={e=>{e.preventDefault();act("/academics/assessments","POST",{course_id:Number(form.course_id),semester_id:Number(form.semester_id),title:form.title,assessment_type:form.assessment_type||"internal",max_marks:Number(form.max_marks)});}}><h4>Create assessment</h4>
+        <label>Course<select required value={form.course_id||""} onChange={e=>setForm(v=>({...v,course_id:e.target.value}))}><option value="">Select course</option>{courses.map(c=><option key={c.id} value={c.id}>{c.code} — {c.title}</option>)}</select></label>
+        <label>Semester ID<input required type="number" min="1" value={form.semester_id||""} onChange={e=>setForm(v=>({...v,semester_id:e.target.value}))}/></label>
+        <label>Assessment title<input required value={form.title||""} onChange={e=>setForm(v=>({...v,title:e.target.value}))}/></label>
+        <label>Type<select value={form.assessment_type||"internal"} onChange={e=>setForm(v=>({...v,assessment_type:e.target.value}))}><option value="internal">Internal</option><option value="ia-1">IA-1</option><option value="ia-2">IA-2</option><option value="assignment">Assignment</option><option value="end-semester">End semester</option></select></label>
+        <label>Maximum marks<input required type="number" min="1" step="0.5" value={form.max_marks||""} onChange={e=>setForm(v=>({...v,max_marks:e.target.value}))}/></label><button disabled={busy}>Create assessment</button></form>
+        <div className="academic-list"><h4>Assessments</h4>{assessments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · {a.assessment_type} · Max {a.max_marks}</small></div></article>)}</div></div>}
+      {tab==="results"&&role==="student"&&<div className="academic-list"><h4>Recorded marks</h4>{assessments.length?assessments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · {a.assessment_type}</small></div><strong>{a.score===null?"Pending":`${a.score} / ${a.max_marks}`}</strong></article>):<p className="muted">No marks have been published yet.</p>}</div>}
+      {tab==="ptm"&&<div className="academic-list"><h4>Parent–teacher meetings</h4>{ptm.length?ptm.map(m=><article className="academic-item" key={m.id}><div><b>{role==="faculty"?m.student:m.faculty}</b><small>{m.register_number} · {m.mode.replace("_"," ")} · {m.status} · {dateLabel(m.scheduled_at)}</small>{m.meeting_minutes&&<p>{m.meeting_minutes}</p>}</div>{role==="faculty"&&m.status==="Requested"&&<form onSubmit={e=>{e.preventDefault();act(`/academics/ptm/${m.id}`,"PATCH",{status:"Scheduled",scheduled_at:form[`ptm_${m.id}`]});}}><input required type="datetime-local" value={form[`ptm_${m.id}`]||""} onChange={e=>setForm(v=>({...v,[`ptm_${m.id}`]:e.target.value}))}/><button disabled={busy}>Schedule</button></form>}</article>):<p className="muted">No PTM requests yet.</p>}</div>}
+      {tab==="transcript"&&role==="student"&&<div className="transcript-area">{transcript?<><div className="transcript-paper"><div className="transcript-title"><p>JOY UNIVERSITY</p><h2>Academic Transcript</h2><small>Raja Nagar, Vadakangulam, Tirunelveli District, Tamil Nadu</small></div><div className="transcript-student"><b>{transcript.student.name}</b><span>Register No: {transcript.student.register_number}</span><span>Batch: {transcript.student.batch||"—"} · Semester: {transcript.student.semester||"—"}</span></div><table className="records-table"><thead><tr><th>Course</th><th>Credits</th><th>Marks</th><th>Percentage</th></tr></thead><tbody>{transcript.courses.map((c,i)=><tr key={i}><td>{c.course_code} — {c.course_title}</td><td>{c.credits}</td><td>{c.earned_marks}/{c.maximum_marks}</td><td>{c.percentage===null?"—":c.percentage+"%"}</td></tr>)}</tbody></table><h3>Estimated CGPA: {transcript.cgpa_estimate??"Pending"}</h3><p className="muted">{transcript.notice}</p><small>Verification code: {transcript.verification_code}</small></div><button className="print-button" onClick={()=>window.print()}>Print / Save as PDF</button></>:<button onClick={openTranscript} disabled={busy}>Load transcript</button>}</div>}
+    </section>
+  );
+}
