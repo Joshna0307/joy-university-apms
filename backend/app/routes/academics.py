@@ -184,6 +184,20 @@ def save_mark(assessment_id):
     return jsonify({"message": "Mark saved"})
 
 
+@academics_bp.get("/faculty-directory")
+@login_required
+@roles_required("student")
+def faculty_directory():
+    student = Student.query.filter_by(user_id=current_user.id).first()
+    if not student:
+        return jsonify({"error": "Student profile has not been created"}), 404
+    faculty_ids = db.session.query(Enrollment.faculty_id).filter(
+        Enrollment.student_id == student.id, Enrollment.faculty_id.isnot(None)
+    ).distinct()
+    rows = Faculty.query.filter(Faculty.id.in_(faculty_ids)).order_by(Faculty.employee_number).all()
+    return jsonify({"faculty": [{"id": x.id, "name": x.user.name, "employee_number": x.employee_number} for x in rows]})
+
+
 @academics_bp.get("/ptm")
 @login_required
 @roles_required("admin", "faculty", "student")
