@@ -13,7 +13,7 @@ A role-based academic portal foundation for Joy University, built with React, Fl
 
 ## Current implementation status
 - Role-aware sign-in shell for Admin, Faculty and Student.
-- Secure administrator bootstrap script; no default credentials are committed.
+- Secure administrator bootstrap script; no default credentials are committed. Student self-registration requires an official university email, a strong password and administrator approval.
 - Admin APIs and screens for departments, courses, students, faculty, semesters and course enrollments.
 - Role-specific dashboard summary API.
 - QR attendance: faculty creates a five-minute course QR; students scan and check in; backend checks enrollment, expiry and duplicate attendance; faculty sees a live check-in list refreshing every three seconds.
@@ -22,7 +22,7 @@ A role-based academic portal foundation for Joy University, built with React, Fl
 - PTM request, faculty scheduling and meeting status view.
 - Student faculty feedback with five rating categories and optional anonymous submission.
 - Student transcript view with estimated CGPA, verification code and print-to-PDF support.
-- Vercel and Render deployment templates plus GitHub Actions frontend-build and backend-syntax checks.
+- Vercel and Render deployment templates plus GitHub Actions frontend-build and backend-syntax checks. The React frontend has a Vercel production build; the Flask API and Neon database are not yet connected.
 
 **Still required before production use:** verify CI results and fix any failures; complete end-to-end testing with synthetic accounts; add robust schema migrations; review audit logging, backups, account password reset, privacy and institutional approval; verify the university's official grading and transcript rules. The transcript CGPA is explicitly an estimate from recorded marks, not an official university result. Assignment submissions currently store a link, not an uploaded file.
 ## Local setup (Windows PowerShell)
