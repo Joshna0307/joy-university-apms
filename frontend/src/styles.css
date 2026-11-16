@@ -47,3 +47,31 @@
 .checkin-feed li b{display:block;font-size:12px}
 .checkin-feed li small{display:block;color:#8490a2;font-size:10px;margin-top:3px}
 .checkin-feed li time{font-size:10px;color:#68778d;white-space:nowrap}
+
+.admin-panel{margin-top:26px;background:#fff;border:1px solid #e7ebf2;border-radius:16px;padding:22px;box-shadow:0 8px 28px rgba(18,35,62,.04)}
+.admin-panel-heading h3{margin:5px 0 6px!important;font:700 19px Manrope}
+.admin-panel-heading .muted{margin:0}
+.admin-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:20px 0}
+.admin-tabs button{border:1px solid #dfe5ee;background:#fff;color:#53627a;border-radius:8px;padding:9px 13px;font-size:12px;font-weight:700;cursor:pointer}
+.admin-tabs button.selected{background:#172b4d;color:white;border-color:#172b4d}
+.admin-workspace{display:grid;grid-template-columns:minmax(230px,310px) minmax(0,1fr);gap:20px;align-items:start}
+.admin-form{display:grid;gap:10px;background:#f8fafc;border:1px solid #e8edf3;border-radius:12px;padding:16px}
+.admin-form h4,.admin-records h4{font:700 14px Manrope;margin:0 0 4px}
+.admin-form label{display:grid;gap:5px;font-size:11px;font-weight:700;color:#53627a}
+.admin-form input,.admin-form select{width:100%;height:39px;border:1px solid #dce2eb;border-radius:7px;padding:0 10px;background:#fff;color:#172033}
+.admin-form>button{height:41px;border:0;border-radius:8px;background:#172b4d;color:white;font-weight:700;cursor:pointer}
+.admin-form>button:disabled{opacity:.55}
+.admin-form small{font-size:10px;line-height:1.5;color:#8490a2}
+.records-heading{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.records-heading span{font-size:11px;color:#315c9b;background:#edf2fa;padding:6px 9px;border-radius:20px}
+.records-table-wrap{overflow:auto;border:1px solid #e8edf3;border-radius:10px}
+.records-table{width:100%;border-collapse:collapse;text-align:left;min-width:420px}
+.records-table th{background:#f8fafc;color:#68778d;font-size:10px;text-transform:uppercase;letter-spacing:.6px}
+.records-table th,.records-table td{padding:12px 13px;border-bottom:1px solid #edf0f4;font-size:11px;white-space:nowrap}
+.records-table td{color:#344258}
+.records-table tr:last-child td{border-bottom:0}
+.empty-records{padding:18px;border:1px dashed #dce2eb;border-radius:9px}
+.admin-error,.admin-notice{font-size:11px;padding:10px 12px;border-radius:8px}
+.admin-error{color:#b42318;background:#fff1f0}
+.admin-notice{color:#276b58;background:#edf8f2}
+@media(max-width:950px){.admin-workspace{grid-template-columns:1fr}}
