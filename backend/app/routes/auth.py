@@ -15,8 +15,10 @@ def register_student():
     password=data.get('password') or ''
     if not name or not email or not register_number or not password:
         return jsonify({'error':'Please fill in all fields'}),400
-    if len(password)<8:
-        return jsonify({'error':'Password must be at least 8 characters'}),400
+    if not email.endswith('@joyuniversity.edu.in'):
+        return jsonify({'error':'Use your official @joyuniversity.edu.in email address'}),400
+    if len(password)<12:
+        return jsonify({'error':'Password must be at least 12 characters'}),400
     if len(name)>120 or len(email)>255 or len(register_number)>40:
         return jsonify({'error':'One or more fields are too long'}),400
     if User.query.filter_by(email=email).first():
