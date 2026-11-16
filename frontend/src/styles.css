@@ -156,3 +156,32 @@
 .summary-card small{display:block;color:#8490a2;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.6px}
 .summary-card strong{display:block;font:700 25px Manrope;color:#172b4d;margin-top:8px}
 @media(max-width:800px){.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+
+
+/* Joy University campus background on the sign-in screen */
+.login {
+  position: relative;
+  min-height: 100vh;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  background:
+    linear-gradient(115deg, rgba(7, 15, 29, .52), rgba(7, 15, 29, .58)),
+    url('https://img.youtube.com/vi/CKa-r1nXsfw/maxresdefault.jpg') center / cover no-repeat fixed;
+}
+.login-card {
+  width: min(420px, 88%);
+  padding: 34px;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 20px;
+  background: rgba(255,255,255,.95);
+  box-shadow: 0 24px 70px rgba(0,0,0,.24);
+  backdrop-filter: blur(10px);
+}
+.hero {
+  background: rgba(8, 17, 33, .48);
+  backdrop-filter: blur(2px);
+  padding: 12%;
+}
+@media (max-width: 950px) {
+  .login { grid-template-columns: 1fr; background-attachment: scroll; }
+  .login-card { margin: 42px auto; }
+}
