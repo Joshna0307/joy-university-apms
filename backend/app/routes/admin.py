@@ -6,7 +6,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.authz import roles_required
-from app.models import Course, Department, Enrollment, Faculty, Semester, Student, User
+from app.models import (AttendanceRecord, AttendanceSession, Assessment, Course, Department, Enrollment, Faculty, Mark, Remediation, Semester, Student, User)
 
 admin_bp = Blueprint("admin", __name__)
 
@@ -256,3 +256,101 @@ def create_enrollment():
         db.session.rollback()
         return jsonify({"error": "This student is already enrolled in this course for the selected semester"}), 409
     return jsonify({"enrollment_id": row.id, "message": "Student enrollment created"}), 201
+
+
+@admin_bp.get("/early-warnings")
+@login_required
+@roles_required("admin")
+def early_warnings():
+    warnings = []
+    students = Student.query.order_by(Student.register_number).all()
+    for student in students:
+        enrollments = Enrollment.query.filter_by(student_id=student.id).all()
+        for enrollment in enrollments:
+            course = db.session.get(Course, enrollment.course_id)
+            total_sessions = AttendanceSession.query.filter_by(course_id=enrollment.course_id).count()
+            attended = (
+                db.session.query(AttendanceRecord.id)
+                .join(AttendanceSession, AttendanceSession.id == AttendanceRecord.session_id)
+                .filter(AttendanceRecord.student_id == student.id, AttendanceSession.course_id == enrollment.course_id)
+                .count()
+            )
+            attendance_pct = round(attended * 100 / total_sessions, 1) if total_sessions else None
+            mark_rows = (
+                db.session.query(Mark.score, Assessment.max_marks)
+                .join(Assessment, Assessment.id == Mark.assessment_id)
+                .filter(Mark.student_id == student.id, Assessment.course_id == enrollment.course_id)
+                .all()
+            )
+            total_score = sum(float(x.score) for x in mark_rows)
+            total_max = sum(float(x.max_marks) for x in mark_rows)
+            academic_pct = round(total_score * 100 / total_max, 1) if total_max else None
+            reasons = []
+            if attendance_pct is not None and attendance_pct < 75:
+                reasons.append("Attendance below 75%")
+            if academic_pct is not None and academic_pct < 50:
+                reasons.append("Academic score below 50%")
+            if reasons:
+                warnings.append({
+                    "student_id": student.id, "name": student.user.name,
+                    "register_number": student.register_number,
+                    "course_id": enrollment.course_id, "course": course.code if course else "",
+                    "attendance_percentage": attendance_pct, "academic_percentage": academic_pct,
+                    "reasons": reasons,
+                    "remediation_status": (Remediation.query.filter_by(student_id=student.id, course_id=enrollment.course_id).order_by(Remediation.created_at.desc()).first().status
+                        if Remediation.query.filter_by(student_id=student.id, course_id=enrollment.course_id).first() else None),
+                })
+    return jsonify({"warnings": warnings, "count": len(warnings)})
+
+
+@admin_bp.get("/remediations")
+@login_required
+@roles_required("admin")
+def list_remediations():
+    rows = Remediation.query.order_by(Remediation.created_at.desc()).all()
+    return jsonify({"remediations": [{
+        "id": x.id, "student_id": x.student_id,
+        "student": db.session.get(Student, x.student_id).user.name,
+        "course_id": x.course_id,
+        "course": db.session.get(Course, x.course_id).code if x.course_id else "General",
+        "reason": x.reason, "notes": x.notes, "status": x.status,
+    } for x in rows]})
+
+
+@admin_bp.post("/remediations")
+@login_required
+@roles_required("admin")
+def create_remediation():
+    data = request.get_json(silent=True) or {}
+    try:
+        student_id = int(data.get("student_id"))
+        course_id = _optional_int(data.get("course_id"), "Course ID")
+        reason = _required(data, "reason", "Reason")
+    except (TypeError, ValueError) as error:
+        return jsonify({"error": str(error)}), 400
+    if not db.session.get(Student, student_id):
+        return jsonify({"error": "Student not found"}), 404
+    if course_id and not db.session.get(Course, course_id):
+        return jsonify({"error": "Course not found"}), 404
+    row = Remediation(student_id=student_id, course_id=course_id, reason=reason, notes=str(data.get("notes") or "").strip())
+    db.session.add(row)
+    db.session.commit()
+    return jsonify({"remediation_id": row.id, "message": "Remediation plan created"}), 201
+
+
+@admin_bp.patch("/remediations/<int:remediation_id>")
+@login_required
+@roles_required("admin")
+def update_remediation(remediation_id):
+    row = db.session.get(Remediation, remediation_id)
+    if not row:
+        return jsonify({"error": "Remediation plan not found"}), 404
+    data = request.get_json(silent=True) or {}
+    status = data.get("status")
+    if status not in ("Open", "In Progress", "Completed"):
+        return jsonify({"error": "Status must be Open, In Progress or Completed"}), 400
+    row.status = status
+    if "notes" in data:
+        row.notes = str(data.get("notes") or "").strip()[:10000]
+    db.session.commit()
+    return jsonify({"message": "Remediation updated", "status": row.status})
