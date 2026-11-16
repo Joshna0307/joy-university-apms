@@ -1,19 +1,29 @@
 # Joy University — Academic Progress Monitoring System (APMS)
 
-A role-based academic portal for Joy University to manage student records, attendance, assessments, faculty workflows, parent–teacher meetings, feedback and academic progress analytics.
+A role-based academic portal foundation for Joy University, built with React, Flask and PostgreSQL.
 
 ## Technology
-- Frontend: React, Vite, Tailwind CSS, Lucide React
+- Frontend: React 18, Vite, Tailwind CSS, Lucide React
 - Backend: Python Flask, Flask-Login, Flask-SQLAlchemy
-- Database: Neon PostgreSQL (SQLite for local development)
+- Database: Neon PostgreSQL for deployment; SQLite for local development
 - Frontend hosting: Vercel
-- Backend hosting: a Python-compatible host (such as Render or Railway)
+- Backend hosting: Render or another Python-compatible host
 
-> Vercel hosts the React frontend. Deploy the Flask API separately and set `VITE_API_BASE_URL` to its public URL. Keep database credentials only in backend environment variables.
+**Hosting note:** Vercel deploys the React frontend. The Flask API must be deployed separately. The frontend uses `VITE_API_BASE_URL` to reach the backend.
+
+## Current implementation status
+- Role-aware sign-in shell for Admin, Faculty and Student.
+- Flask authentication and role-protected API foundation.
+- Academic database models for students, faculty, courses, semesters, enrollments, attendance, assessments, assignments, PTM, feedback, remediation and transcript verification.
+- Role-specific dashboard summary API.
+- QR attendance: faculty creates a five-minute course QR; students scan and check in; backend checks enrollment, expiry and duplicate attendance; faculty dashboard shows a live check-in list that refreshes every three seconds.
+- Deployment configuration templates for Vercel and Render.
+
+**Not yet complete:** full admin CRUD screens, marks and assignment workflows, PTM screens, feedback workflows, transcript PDF/QR verification, early-warning management, production database migrations and end-to-end tests. Do not use this starter as a production university records system until these are completed and reviewed.
 
 ## Local setup (Windows PowerShell)
 
-### Backend
+### 1. Backend
 ```powershell
 cd backend
 py -m venv .venv
@@ -22,34 +32,59 @@ pip install -r requirements.txt
 Copy-Item .env.example .env
 py run.py
 ```
-API: `http://127.0.0.1:5000`
+The API runs at `http://127.0.0.1:5000`.
 
-### Frontend (open a second terminal)
+### 2. Frontend (open a second terminal)
 ```powershell
 cd frontend
 npm install
 Copy-Item .env.example .env
 npm run dev
 ```
-Open the Vite URL printed in the terminal (usually `http://localhost:5173`).
+Open the Vite URL shown in the terminal, usually `http://localhost:5173`.
 
-## Roles
-- **Admin:** institutional setup, users, academic oversight and analytics.
-- **Faculty:** assigned classes, attendance, marks, assignments, PTM and feedback.
-- **Student:** personal dashboard, attendance, marks, SGPA/CGPA, assignments, PTM and transcripts.
+## Deployment overview
 
-## Current implementation
-The first commit establishes the React role-aware starter interface, Flask health endpoint, session login endpoints, and user model. QR attendance, academic records, PTM, feedback, early-warning analytics and QR-verifiable transcripts are described in `docs/` and remain planned implementation stages.
+### Neon PostgreSQL
+1. Create a Neon project and database.
+2. Copy the pooled connection string from Neon.
+3. Add it to the backend host as `DATABASE_URL`; never put it in the frontend or commit it to GitHub.
+4. Run the project's database migrations before using production data. `db.create_all()` creates missing tables but does not safely migrate existing tables.
 
-## Environment variables
-See `backend/.env.example` and `frontend/.env.example`. Never commit real passwords, API keys or a Neon connection string. Configure `DATABASE_URL`, `SECRET_KEY` and `FRONTEND_ORIGIN` on the backend hosting provider.
+### Render backend
+1. Create a new **Web Service** from this GitHub repository.
+2. Set **Root Directory** to `backend`.
+3. Build command: `pip install -r requirements.txt`.
+4. Start command: `gunicorn run:app`.
+5. Set environment variables: `DATABASE_URL`, `SECRET_KEY` (a long random secret), `FLASK_ENV=production`, and `FRONTEND_ORIGIN` (your Vercel URL).
+6. Deploy and confirm `https://YOUR-BACKEND-URL/api/health` returns healthy.
 
-## Security before production
-Create the first administrator through a secure setup workflow, enforce role and record ownership checks on every protected route, configure HTTPS and production cookie/CORS settings, and use the university's approved grading and attendance rules.
+### Vercel frontend
+1. Import this repository into Vercel.
+2. Set **Root Directory** to `frontend`.
+3. Build command: `npm run build`; output directory: `dist`.
+4. Add `VITE_API_BASE_URL=https://YOUR-BACKEND-URL/api`.
+5. Deploy, then update backend `FRONTEND_ORIGIN` with the Vercel production URL.
 
+The camera scanner requires HTTPS and browser camera permission.
 
-## QR attendance module
+## Initial administrator
+Use the secure bootstrap script from the backend environment after the database is configured:
+```powershell
+py -m scripts.create_admin
+```
+It prompts for the official university email, name and a strong password. Do not commit credentials or share the password in chat.
 
-The faculty dashboard can generate a five-minute course QR code. Students can scan it from the student dashboard using their device camera. The API checks session expiry, enrollment, and duplicate submissions. Camera scanning requires HTTPS in deployed environments and the user must grant camera permission.
+## Important production checks
+- Configure CORS for the exact frontend origin and secure session cookies.
+- Run reviewed database migrations; do not rely on `create_all()` for schema changes.
+- Verify authentication, role permissions, record ownership, backups and audit requirements.
+- Test all workflows with synthetic data before importing real student records.
+- Confirm university-approved attendance thresholds, grading rules and transcript formats.
 
-After pulling the latest changes, install frontend packages with `npm install` inside `frontend`, then run `npm run build` to check the production bundle. The QR attendance API details are in [docs/qr-attendance-api.md](docs/qr-attendance-api.md).
+## Documentation
+- [Architecture](docs/architecture.md)
+- [Database design](docs/database-design.md)
+- [API documentation](docs/api-documentation.md)
+- [Security and data model](docs/security-and-data-model.md)
+- [QR attendance API](docs/qr-attendance-api.md)
