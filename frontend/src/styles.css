@@ -133,3 +133,7 @@
 .mark-row small{display:block;font-size:10px;color:#8490a2;margin-top:4px}
 .mark-row input{width:90px;min-height:36px;border:1px solid #dce2eb;border-radius:7px;padding:6px}
 .mark-row button{border:0;border-radius:7px;background:#172b4d;color:white;padding:9px 12px;font-size:10px;font-weight:700}
+
+.transcript-verify{display:flex;align-items:center;gap:12px;margin-top:16px;padding-top:14px;border-top:1px solid #e8edf3}
+.transcript-verify small{max-width:300px;line-height:1.5;color:#68778d;font-size:10px}
+@media print{.transcript-verify svg{width:90px;height:90px}}
