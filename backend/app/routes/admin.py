@@ -206,6 +206,172 @@ def create_semester():
     return jsonify({"semester": {"id": row.id, "name": row.name, "academic_year": row.academic_year, "number": row.number}}), 201
 
 
+
+
+@admin_bp.patch("/departments/<int:department_id>")
+@login_required
+@roles_required("admin")
+def update_department(department_id):
+    row = db.session.get(Department, department_id)
+    if row is None:
+        return jsonify({"error": "Department not found"}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        if "name" in data:
+            row.name = _required(data, "name", "Department name")
+        if "code" in data:
+            row.code = _required(data, "code", "Department code").upper()
+        db.session.commit()
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Department name or code already exists"}), 409
+    return jsonify({"department": {"id": row.id, "name": row.name, "code": row.code}})
+
+
+@admin_bp.patch("/courses/<int:course_id>")
+@login_required
+@roles_required("admin")
+def update_course(course_id):
+    row = db.session.get(Course, course_id)
+    if row is None:
+        return jsonify({"error": "Course not found"}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        if "code" in data:
+            row.code = _required(data, "code", "Course code").upper()
+        if "title" in data:
+            row.title = _required(data, "title", "Course title")
+        if "credits" in data:
+            credits = Decimal(str(data["credits"]))
+            if not credits.is_finite() or credits <= 0 or credits > 30:
+                raise ValueError
+            row.credits = credits
+        if "department_id" in data:
+            department_id = _optional_int(data["department_id"], "Department ID")
+            if department_id and db.session.get(Department, department_id) is None:
+                return jsonify({"error": "Selected department was not found"}), 404
+            row.department_id = department_id
+        db.session.commit()
+    except (ValueError, InvalidOperation):
+        db.session.rollback()
+        return jsonify({"error": "Enter a valid course code, title and credits (greater than 0 and at most 30)"}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Course code already exists"}), 409
+    return jsonify({"course": {"id": row.id, "code": row.code, "title": row.title, "credits": float(row.credits), "department_id": row.department_id}})
+
+
+@admin_bp.patch("/students/<int:student_id>")
+@login_required
+@roles_required("admin")
+def update_student(student_id):
+    row = db.session.get(Student, student_id)
+    if row is None:
+        return jsonify({"error": "Student not found"}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        if "name" in data:
+            row.user.name = _required(data, "name", "Student name")
+        if "email" in data:
+            email = _required(data, "email", "University email").lower()
+            if User.query.filter(User.email == email, User.id != row.user_id).first():
+                return jsonify({"error": "Email is already in use"}), 409
+            row.user.email = email
+        if "register_number" in data:
+            row.register_number = _required(data, "register_number", "Register number").upper()
+        if "department_id" in data:
+            department_id = _optional_int(data["department_id"], "Department ID")
+            if department_id and db.session.get(Department, department_id) is None:
+                return jsonify({"error": "Selected department was not found"}), 404
+            row.department_id = department_id
+        if "batch" in data:
+            batch = data["batch"]
+            if batch is not None and not isinstance(batch, str):
+                raise ValueError("Batch must be text")
+            row.batch = (batch or "").strip() or None
+        if "semester" in data:
+            row.semester = _optional_int(data["semester"], "Semester")
+        db.session.commit()
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Email or register number already exists"}), 409
+    return jsonify({"student": {
+        "id": row.id, "name": row.user.name, "email": row.user.email,
+        "register_number": row.register_number, "department_id": row.department_id,
+        "batch": row.batch, "semester": row.semester,
+    }})
+
+
+@admin_bp.patch("/faculty/<int:faculty_id>")
+@login_required
+@roles_required("admin")
+def update_faculty(faculty_id):
+    row = db.session.get(Faculty, faculty_id)
+    if row is None:
+        return jsonify({"error": "Faculty member not found"}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        if "name" in data:
+            row.user.name = _required(data, "name", "Faculty name")
+        if "email" in data:
+            email = _required(data, "email", "University email").lower()
+            if User.query.filter(User.email == email, User.id != row.user_id).first():
+                return jsonify({"error": "Email is already in use"}), 409
+            row.user.email = email
+        if "employee_number" in data:
+            row.employee_number = _required(data, "employee_number", "Employee number").upper()
+        if "department_id" in data:
+            department_id = _optional_int(data["department_id"], "Department ID")
+            if department_id and db.session.get(Department, department_id) is None:
+                return jsonify({"error": "Selected department was not found"}), 404
+            row.department_id = department_id
+        db.session.commit()
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Email or employee number already exists"}), 409
+    return jsonify({"faculty": {
+        "id": row.id, "name": row.user.name, "email": row.user.email,
+        "employee_number": row.employee_number, "department_id": row.department_id,
+    }})
+
+
+@admin_bp.patch("/semesters/<int:semester_id>")
+@login_required
+@roles_required("admin")
+def update_semester(semester_id):
+    row = db.session.get(Semester, semester_id)
+    if row is None:
+        return jsonify({"error": "Semester not found"}), 404
+    data = request.get_json(silent=True) or {}
+    try:
+        if "name" in data:
+            row.name = _required(data, "name", "Semester name")
+        if "academic_year" in data:
+            row.academic_year = _required(data, "academic_year", "Academic year")
+        if "number" in data:
+            number = int(data["number"])
+            if number < 1 or number > 12:
+                raise ValueError
+            row.number = number
+        db.session.commit()
+    except (ValueError, TypeError):
+        db.session.rollback()
+        return jsonify({"error": "Enter a valid semester name, academic year and semester number (1–12)"}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Could not update semester"}), 409
+    return jsonify({"semester": {"id": row.id, "name": row.name, "academic_year": row.academic_year, "number": row.number}})
+
+
 @admin_bp.get("/enrollments")
 @login_required
 @roles_required("admin")
