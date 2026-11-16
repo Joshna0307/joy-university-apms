@@ -14,7 +14,7 @@ with app.app_context():
     password = getpass.getpass("Choose a strong password (min 12 characters): ")
     confirm = getpass.getpass("Confirm password: ")
 
-    if not re.fullmatch(r"[^@\\s]+@joyuniversity\\.edu\\.in", email):
+    if not re.fullmatch(r"[^@\s]+@joyuniversity\.edu\.in", email):
         raise SystemExit("Use an official @joyuniversity.edu.in email address.")
     if not name:
         raise SystemExit("Name is required.")
