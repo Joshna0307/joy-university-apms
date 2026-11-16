@@ -1,0 +1,175 @@
+from decimal import Decimal, InvalidOperation
+
+from flask import Blueprint, jsonify, request
+from flask_login import login_required
+from sqlalchemy.exc import IntegrityError
+
+from app import db
+from app.authz import roles_required
+from app.models import Course, Department, Faculty, Student, User
+
+admin_bp = Blueprint("admin", __name__)
+
+
+def _required(data, key, label):
+    value = data.get(key)
+    if not isinstance(value, str) or not value.strip():
+        raise ValueError(f"{label} is required")
+    return value.strip()
+
+
+def _optional_int(value, label):
+    if value in (None, ""):
+        return None
+    try:
+        number = int(value)
+        if number < 1:
+            raise ValueError
+        return number
+    except (TypeError, ValueError):
+        raise ValueError(f"{label} must be a positive whole number")
+
+
+@admin_bp.get("/departments")
+@login_required
+@roles_required("admin")
+def list_departments():
+    rows = Department.query.order_by(Department.name).all()
+    return jsonify({"departments": [{"id": x.id, "name": x.name, "code": x.code} for x in rows]})
+
+
+@admin_bp.post("/departments")
+@login_required
+@roles_required("admin")
+def create_department():
+    data = request.get_json(silent=True) or {}
+    try:
+        row = Department(name=_required(data, "name", "Department name"), code=_required(data, "code", "Department code").upper())
+        db.session.add(row)
+        db.session.commit()
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Department name or code already exists"}), 409
+    return jsonify({"department": {"id": row.id, "name": row.name, "code": row.code}}), 201
+
+
+@admin_bp.get("/courses")
+@login_required
+@roles_required("admin")
+def list_courses():
+    rows = Course.query.order_by(Course.code).all()
+    return jsonify({"courses": [{"id": x.id, "code": x.code, "title": x.title, "credits": float(x.credits), "department_id": x.department_id} for x in rows]})
+
+
+@admin_bp.post("/courses")
+@login_required
+@roles_required("admin")
+def create_course():
+    data = request.get_json(silent=True) or {}
+    try:
+        code = _required(data, "code", "Course code").upper()
+        title = _required(data, "title", "Course title")
+        credits = Decimal(str(data.get("credits", "3")))
+        if not credits.is_finite() or credits <= 0 or credits > 30:
+            raise ValueError
+        department_id = _optional_int(data.get("department_id"), "Department ID")
+        if department_id and db.session.get(Department, department_id) is None:
+            return jsonify({"error": "Selected department was not found"}), 404
+        row = Course(code=code, title=title, credits=credits, department_id=department_id)
+        db.session.add(row)
+        db.session.commit()
+    except (ValueError, InvalidOperation):
+        db.session.rollback()
+        return jsonify({"error": "Enter a valid course code, title and credits (greater than 0 and at most 30)"}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Course code already exists"}), 409
+    return jsonify({"course": {"id": row.id, "code": row.code, "title": row.title, "credits": float(row.credits), "department_id": row.department_id}}), 201
+
+
+@admin_bp.get("/students")
+@login_required
+@roles_required("admin")
+def list_students():
+    rows = Student.query.order_by(Student.register_number).all()
+    return jsonify({"students": [{
+        "id": x.id, "name": x.user.name, "email": x.user.email,
+        "register_number": x.register_number, "department_id": x.department_id,
+        "batch": x.batch, "semester": x.semester,
+    } for x in rows]})
+
+
+@admin_bp.post("/students")
+@login_required
+@roles_required("admin")
+def create_student():
+    data = request.get_json(silent=True) or {}
+    try:
+        name = _required(data, "name", "Student name")
+        email = _required(data, "email", "University email").lower()
+        password = _required(data, "password", "Initial password")
+        register_number = _required(data, "register_number", "Register number").upper()
+        if len(password) < 12:
+            return jsonify({"error": "Initial password must contain at least 12 characters"}), 400
+        department_id = _optional_int(data.get("department_id"), "Department ID")
+        semester = _optional_int(data.get("semester"), "Semester")
+        if department_id and db.session.get(Department, department_id) is None:
+            return jsonify({"error": "Selected department was not found"}), 404
+        user = User(name=name, email=email, role="student", active=True)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
+        row = Student(user_id=user.id, register_number=register_number, department_id=department_id, batch=(data.get("batch") or "").strip() or None, semester=semester)
+        db.session.add(row)
+        db.session.commit()
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Email or register number already exists"}), 409
+    return jsonify({"student": {"id": row.id, "name": user.name, "email": user.email, "register_number": row.register_number}}), 201
+
+
+@admin_bp.get("/faculty")
+@login_required
+@roles_required("admin")
+def list_faculty():
+    rows = Faculty.query.order_by(Faculty.employee_number).all()
+    return jsonify({"faculty": [{
+        "id": x.id, "name": x.user.name, "email": x.user.email,
+        "employee_number": x.employee_number, "department_id": x.department_id,
+    } for x in rows]})
+
+
+@admin_bp.post("/faculty")
+@login_required
+@roles_required("admin")
+def create_faculty():
+    data = request.get_json(silent=True) or {}
+    try:
+        name = _required(data, "name", "Faculty name")
+        email = _required(data, "email", "University email").lower()
+        password = _required(data, "password", "Initial password")
+        employee_number = _required(data, "employee_number", "Employee number").upper()
+        if len(password) < 12:
+            return jsonify({"error": "Initial password must contain at least 12 characters"}), 400
+        department_id = _optional_int(data.get("department_id"), "Department ID")
+        if department_id and db.session.get(Department, department_id) is None:
+            return jsonify({"error": "Selected department was not found"}), 404
+        user = User(name=name, email=email, role="faculty", active=True)
+        user.set_password(password)
+        db.session.add(user)
+        db.session.flush()
+        row = Faculty(user_id=user.id, employee_number=employee_number, department_id=department_id)
+        db.session.add(row)
+        db.session.commit()
+    except ValueError as error:
+        db.session.rollback()
+        return jsonify({"error": str(error)}), 400
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "Email or employee number already exists"}), 409
+    return jsonify({"faculty": {"id": row.id, "name": user.name, "email": user.email, "employee_number": row.employee_number}}), 201
