@@ -9,7 +9,7 @@ class TimestampMixin:
     updated_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
 
 
-class User(UserMixin, db.Model, TimestampMixin):
+class User(UserMixin, TimestampMixin, db.Model):
     __tablename__ = "users"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), nullable=False)
@@ -25,14 +25,14 @@ class User(UserMixin, db.Model, TimestampMixin):
         return {"id": self.id, "name": self.name, "email": self.email, "role": self.role}
 
 
-class Department(db.Model, TimestampMixin):
+class Department(TimestampMixin, db.Model):
     __tablename__ = "departments"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(120), unique=True, nullable=False)
     code = db.Column(db.String(20), unique=True, nullable=False)
 
 
-class Student(db.Model, TimestampMixin):
+class Student(TimestampMixin, db.Model):
     __tablename__ = "students"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False)
@@ -44,7 +44,7 @@ class Student(db.Model, TimestampMixin):
     department = db.relationship("Department")
 
 
-class Faculty(db.Model, TimestampMixin):
+class Faculty(TimestampMixin, db.Model):
     __tablename__ = "faculty"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"), unique=True, nullable=False)
@@ -54,7 +54,7 @@ class Faculty(db.Model, TimestampMixin):
     department = db.relationship("Department")
 
 
-class Course(db.Model, TimestampMixin):
+class Course(TimestampMixin, db.Model):
     __tablename__ = "courses"
     id = db.Column(db.Integer, primary_key=True)
     code = db.Column(db.String(30), unique=True, nullable=False)
@@ -63,7 +63,7 @@ class Course(db.Model, TimestampMixin):
     department_id = db.Column(db.Integer, db.ForeignKey("departments.id"), nullable=True)
 
 
-class Semester(db.Model, TimestampMixin):
+class Semester(TimestampMixin, db.Model):
     __tablename__ = "semesters"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(40), nullable=False)
@@ -71,7 +71,7 @@ class Semester(db.Model, TimestampMixin):
     number = db.Column(db.Integer, nullable=False)
 
 
-class Enrollment(db.Model, TimestampMixin):
+class Enrollment(TimestampMixin, db.Model):
     __tablename__ = "enrollments"
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
@@ -81,7 +81,7 @@ class Enrollment(db.Model, TimestampMixin):
     __table_args__ = (db.UniqueConstraint("student_id", "course_id", "semester_id"),)
 
 
-class AttendanceSession(db.Model, TimestampMixin):
+class AttendanceSession(TimestampMixin, db.Model):
     __tablename__ = "attendance_sessions"
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=False)
@@ -91,7 +91,7 @@ class AttendanceSession(db.Model, TimestampMixin):
     is_open = db.Column(db.Boolean, nullable=False, default=True)
 
 
-class AttendanceRecord(db.Model, TimestampMixin):
+class AttendanceRecord(TimestampMixin, db.Model):
     __tablename__ = "attendance_records"
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.Integer, db.ForeignKey("attendance_sessions.id"), nullable=False)
@@ -100,7 +100,7 @@ class AttendanceRecord(db.Model, TimestampMixin):
     __table_args__ = (db.UniqueConstraint("session_id", "student_id"),)
 
 
-class Assessment(db.Model, TimestampMixin):
+class Assessment(TimestampMixin, db.Model):
     __tablename__ = "assessments"
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=False)
@@ -110,7 +110,7 @@ class Assessment(db.Model, TimestampMixin):
     max_marks = db.Column(db.Numeric(7, 2), nullable=False)
 
 
-class Mark(db.Model, TimestampMixin):
+class Mark(TimestampMixin, db.Model):
     __tablename__ = "marks"
     id = db.Column(db.Integer, primary_key=True)
     assessment_id = db.Column(db.Integer, db.ForeignKey("assessments.id"), nullable=False)
@@ -119,7 +119,7 @@ class Mark(db.Model, TimestampMixin):
     __table_args__ = (db.UniqueConstraint("assessment_id", "student_id"),)
 
 
-class Assignment(db.Model, TimestampMixin):
+class Assignment(TimestampMixin, db.Model):
     __tablename__ = "assignments"
     id = db.Column(db.Integer, primary_key=True)
     course_id = db.Column(db.Integer, db.ForeignKey("courses.id"), nullable=False)
@@ -129,7 +129,7 @@ class Assignment(db.Model, TimestampMixin):
     due_at = db.Column(db.DateTime, nullable=False)
 
 
-class AssignmentSubmission(db.Model, TimestampMixin):
+class AssignmentSubmission(TimestampMixin, db.Model):
     __tablename__ = "assignment_submissions"
     id = db.Column(db.Integer, primary_key=True)
     assignment_id = db.Column(db.Integer, db.ForeignKey("assignments.id"), nullable=False)
@@ -141,7 +141,7 @@ class AssignmentSubmission(db.Model, TimestampMixin):
     __table_args__ = (db.UniqueConstraint("assignment_id", "student_id"),)
 
 
-class PTMMeeting(db.Model, TimestampMixin):
+class PTMMeeting(TimestampMixin, db.Model):
     __tablename__ = "ptm_meetings"
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
@@ -153,7 +153,7 @@ class PTMMeeting(db.Model, TimestampMixin):
     meeting_minutes = db.Column(db.Text, nullable=True)
 
 
-class FacultyFeedback(db.Model, TimestampMixin):
+class FacultyFeedback(TimestampMixin, db.Model):
     __tablename__ = "faculty_feedback"
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
@@ -167,7 +167,7 @@ class FacultyFeedback(db.Model, TimestampMixin):
     is_anonymous = db.Column(db.Boolean, nullable=False, default=False)
 
 
-class Remediation(db.Model, TimestampMixin):
+class Remediation(TimestampMixin, db.Model):
     __tablename__ = "remediations"
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
@@ -177,7 +177,7 @@ class Remediation(db.Model, TimestampMixin):
     status = db.Column(db.String(20), nullable=False, default="Open")
 
 
-class TranscriptVerification(db.Model, TimestampMixin):
+class TranscriptVerification(TimestampMixin, db.Model):
     __tablename__ = "transcript_verifications"
     id = db.Column(db.Integer, primary_key=True)
     student_id = db.Column(db.Integer, db.ForeignKey("students.id"), nullable=False)
