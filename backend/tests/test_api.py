@@ -53,6 +53,7 @@ def test_student_registration_requires_admin_approval(client, app):
 
     with app.app_context():
         make_user("Admin", "admin@joyuniversity.edu.in", "admin")
+        db.session.commit()
         pending_user_id = User.query.filter_by(email="teststudent@joyuniversity.edu.in").first().id
     assert client.post("/api/auth/login", json={
         "email": "admin@joyuniversity.edu.in",
