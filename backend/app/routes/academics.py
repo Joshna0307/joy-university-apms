@@ -343,7 +343,8 @@ def submit_feedback():
     faculty = db.session.get(Faculty, faculty_id)
     if not faculty or not Enrollment.query.filter_by(student_id=student.id, faculty_id=faculty.id).first():
         return jsonify({"error": "Feedback is available only for faculty teaching your courses"}), 403
-    row = FacultyFeedback(student_id=student.id, faculty_id=faculty.id, **ratings, comments=str(data.get("comments") or "").strip()[:3000], is_anonymous=bool(data.get("is_anonymous")))
+    anonymous = bool(data.get("is_anonymous"))
+    row = FacultyFeedback(student_id=None if anonymous else student.id, faculty_id=faculty.id, **ratings, comments=str(data.get("comments") or "").strip()[:3000], is_anonymous=anonymous)
     db.session.add(row)
     db.session.commit()
     return jsonify({"message": "Thank you. Your feedback was submitted."}), 201
