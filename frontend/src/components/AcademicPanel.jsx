@@ -16,7 +16,7 @@ export default function AcademicPanel({ role }) {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  const [transcript, setTranscript] = useState(null);
+  const [transcript, setTranscript] = useState(null);\n  const [activeAssessment, setActiveAssessment] = useState(null);\n  const [roster, setRoster] = useState([]);
 
   async function load() {
     setError("");
@@ -44,6 +44,20 @@ export default function AcademicPanel({ role }) {
       return result;
     } catch (e) { setError(e.message); return null; }
     finally { setBusy(false); }
+  }
+
+  async function loadRoster(assessment) {
+    setBusy(true); setError(""); setActiveAssessment(assessment);
+    try {
+      const data = await api(`/academics/assessments/${assessment.id}/students`);
+      setRoster(data.students || []);
+    } catch (e) { setError(e.message); setRoster([]); }
+    finally { setBusy(false); }
+  }
+
+  async function saveMark(assessmentId, studentId, score) {
+    await act(`/academics/assessments/${assessmentId}/marks`, "POST", { student_id: studentId, score: Number(score) });
+    if (activeAssessment) await loadRoster(activeAssessment);
   }
 
   async function openTranscript() {
@@ -77,7 +91,7 @@ export default function AcademicPanel({ role }) {
         <label>Assessment title<input required value={form.title||""} onChange={e=>setForm(v=>({...v,title:e.target.value}))}/></label>
         <label>Type<select value={form.assessment_type||"internal"} onChange={e=>setForm(v=>({...v,assessment_type:e.target.value}))}><option value="internal">Internal</option><option value="ia-1">IA-1</option><option value="ia-2">IA-2</option><option value="assignment">Assignment</option><option value="end-semester">End semester</option></select></label>
         <label>Maximum marks<input required type="number" min="1" step="0.5" value={form.max_marks||""} onChange={e=>setForm(v=>({...v,max_marks:e.target.value}))}/></label><button disabled={busy}>Create assessment</button></form>
-        <div className="academic-list"><h4>Assessments</h4>{assessments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · {a.assessment_type} · Max {a.max_marks}</small></div></article>)}</div></div>}
+        <div className="academic-list"><h4>Assessments</h4>{assessments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · {a.assessment_type} · Max {a.max_marks}</small></div><button type="button" onClick={()=>loadRoster(a)}>Enter marks</button></article>)}{activeAssessment&&<div className="mark-roster"><h4>Marks: {activeAssessment.title}</h4>{roster.length?roster.map(s=><form className="mark-row" key={s.id} onSubmit={e=>{e.preventDefault();saveMark(activeAssessment.id,s.id,e.currentTarget.elements.score.value);}}><div><b>{s.name}</b><small>{s.register_number} · Current: {s.score??"Not entered"}</small></div><input name="score" type="number" min="0" max={activeAssessment.max_marks} step="0.01" required defaultValue={s.score??""} placeholder={`0–${activeAssessment.max_marks}`}/><button disabled={busy}>Save</button></form>):<p className="muted">No students are enrolled for this course and semester.</p>}</div>}</div></div>}
       {tab==="results"&&role==="student"&&<div className="academic-list"><h4>Recorded marks</h4>{assessments.length?assessments.map(a=><article className="academic-item" key={a.id}><div><b>{a.title}</b><small>{a.course} · {a.assessment_type}</small></div><strong>{a.score===null?"Pending":`${a.score} / ${a.max_marks}`}</strong></article>):<p className="muted">No marks have been published yet.</p>}</div>}
       {tab==="ptm"&&<div className="academic-list">{role==="student"&&<form className="ptm-request" onSubmit={e=>{e.preventDefault();act("/academics/ptm","POST",{faculty_id:Number(form.faculty_id),mode:form.mode||"in_person"});}}><h4>Request a meeting</h4><label>Faculty member<select required value={form.faculty_id||""} onChange={e=>setForm(v=>({...v,faculty_id:e.target.value}))}><option value="">Select faculty</option>{facultyList.map(f=><option key={f.id} value={f.id}>{f.name} · {f.employee_number}</option>)}</select></label><label>Meeting mode<select value={form.mode||"in_person"} onChange={e=>setForm(v=>({...v,mode:e.target.value}))}><option value="in_person">In person</option><option value="virtual">Virtual</option></select></label><button disabled={busy}>Send PTM request</button></form>}<h4>Parent–teacher meetings</h4>{ptm.length?ptm.map(m=><article className="academic-item" key={m.id}><div><b>{role==="faculty"?m.student:m.faculty}</b><small>{m.register_number} · {m.mode.replace("_"," ")} · {m.status} · {dateLabel(m.scheduled_at)}</small>{m.meeting_minutes&&<p>{m.meeting_minutes}</p>}</div>{role==="faculty"&&m.status==="Requested"&&<form onSubmit={e=>{e.preventDefault();act(`/academics/ptm/${m.id}`,"PATCH",{status:"Scheduled",scheduled_at:form[`ptm_${m.id}`]});}}><input required type="datetime-local" value={form[`ptm_${m.id}`]||""} onChange={e=>setForm(v=>({...v,[`ptm_${m.id}`]:e.target.value}))}/><button disabled={busy}>Schedule</button></form>}</article>):<p className="muted">No PTM requests yet.</p>}</div>}
       {tab==="feedback"&&role==="student"&&<form className="academic-form feedback-form" onSubmit={e=>{e.preventDefault();act("/academics/feedback","POST",{faculty_id:Number(form.feedback_faculty_id),teaching_clarity:Number(form.teaching_clarity),punctuality_coverage:Number(form.punctuality_coverage),doubt_resolution:Number(form.doubt_resolution),practical_guidance:Number(form.practical_guidance),course_materials:Number(form.course_materials),comments:form.comments,is_anonymous:!!form.is_anonymous});}}><h4>Faculty feedback</h4><label>Faculty member<select required value={form.feedback_faculty_id||""} onChange={e=>setForm(v=>({...v,feedback_faculty_id:e.target.value}))}><option value="">Select faculty</option>{facultyList.map(f=><option key={f.id} value={f.id}>{f.name}</option>)}</select></label>{[["teaching_clarity","Teaching clarity"],["punctuality_coverage","Punctuality & syllabus coverage"],["doubt_resolution","Doubt resolution & mentorship"],["practical_guidance","Practical / lab guidance"],["course_materials","Course notes & materials"]].map(([key,label])=><label key={key}>{label}<select required value={form[key]||""} onChange={e=>setForm(v=>({...v,[key]:e.target.value}))}><option value="">Rate from 1 to 5</option>{[1,2,3,4,5].map(n=><option key={n} value={n}>{n} / 5</option>)}</select></label>)}<label>Comments<textarea value={form.comments||""} onChange={e=>setForm(v=>({...v,comments:e.target.value}))}/></label><label className="anonymous-check"><input type="checkbox" checked={!!form.is_anonymous} onChange={e=>setForm(v=>({...v,is_anonymous:e.target.checked}))}/> Submit anonymously</label><button disabled={busy}>Submit feedback</button></form>}
