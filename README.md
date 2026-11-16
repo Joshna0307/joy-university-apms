@@ -46,3 +46,10 @@ See `backend/.env.example` and `frontend/.env.example`. Never commit real passwo
 
 ## Security before production
 Create the first administrator through a secure setup workflow, enforce role and record ownership checks on every protected route, configure HTTPS and production cookie/CORS settings, and use the university's approved grading and attendance rules.
+
+
+## QR attendance module
+
+The faculty dashboard can generate a five-minute course QR code. Students can scan it from the student dashboard using their device camera. The API checks session expiry, enrollment, and duplicate submissions. Camera scanning requires HTTPS in deployed environments and the user must grant camera permission.
+
+After pulling the latest changes, install frontend packages with `npm install` inside `frontend`, then run `npm run build` to check the production bundle. The QR attendance API details are in [docs/qr-attendance-api.md](docs/qr-attendance-api.md).
