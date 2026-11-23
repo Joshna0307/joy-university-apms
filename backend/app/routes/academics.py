@@ -31,23 +31,36 @@ def _faculty_owns_course(faculty_id, course_id):
 @roles_required("admin", "faculty", "student")
 def list_assignments():
     query = Assignment.query
+    student_profile = None
     if current_user.role == "faculty":
         profile = Faculty.query.filter_by(user_id=current_user.id).first()
         if not profile:
             return jsonify({"error": "Faculty profile has not been created"}), 404
         query = query.filter_by(faculty_id=profile.id)
     elif current_user.role == "student":
-        profile = Student.query.filter_by(user_id=current_user.id).first()
-        if not profile:
+        student_profile = Student.query.filter_by(user_id=current_user.id).first()
+        if not student_profile:
             return jsonify({"error": "Student profile has not been created"}), 404
-        course_ids = db.session.query(Enrollment.course_id).filter_by(student_id=profile.id)
+        course_ids = db.session.query(Enrollment.course_id).filter_by(student_id=student_profile.id)
         query = query.filter(Assignment.course_id.in_(course_ids))
     rows = query.order_by(Assignment.due_at.asc()).all()
-    return jsonify({"assignments": [{
-        "id": x.id, "course_id": x.course_id, "course": db.session.get(Course, x.course_id).code,
-        "title": x.title, "instructions": x.instructions, "due_at": x.due_at.isoformat() + "Z",
-        "faculty_id": x.faculty_id,
-    } for x in rows]})
+    result = []
+    for item in rows:
+        submission = AssignmentSubmission.query.filter_by(
+            assignment_id=item.id, student_id=student_profile.id
+        ).first() if student_profile else None
+        result.append({
+            "id": item.id, "course_id": item.course_id, "course": db.session.get(Course, item.course_id).code,
+            "title": item.title, "instructions": item.instructions, "due_at": item.due_at.isoformat() + "Z",
+            "faculty_id": item.faculty_id,
+            "submission": {
+                "file_url": submission.file_url,
+                "submitted_at": submission.submitted_at.isoformat() + "Z",
+                "score": float(submission.score) if submission.score is not None else None,
+                "feedback": submission.feedback,
+            } if submission else None,
+        })
+    return jsonify({"assignments": result})
 
 
 @academics_bp.post("/assignments")
