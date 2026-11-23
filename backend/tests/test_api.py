@@ -7,7 +7,9 @@ os.environ["FLASK_ENV"] = "testing"
 import pytest
 
 from app import create_app, db
-from app.models import Course, Department, Enrollment, Faculty, Semester, Student, User
+from datetime import datetime
+
+from app.models import Assignment, AssignmentSubmission, Course, Department, Enrollment, Faculty, Semester, Student, User
 
 
 @pytest.fixture()
@@ -273,4 +275,72 @@ def test_admin_can_edit_enrollments_and_students_cannot(client, app):
     denied = client.patch(f"/api/admin/enrollments/{enrollment_id}", json={
         "faculty_id": None,
     })
+    assert denied.status_code == 403
+
+def test_faculty_can_grade_assignment_submissions_and_students_cannot(client, app):
+    with app.app_context():
+        faculty_user = make_user("Faculty", "faculty-grade@joyuniversity.edu.in", "faculty")
+        faculty = Faculty(user_id=faculty_user.id, employee_number="FAC-GRADE-001")
+        student_user = make_user("Student", "student-grade@joyuniversity.edu.in", "student")
+        student = Student(user_id=student_user.id, register_number="JU-GRADE-001")
+        course = Course(code="GRADE101", title="Assessment Course", credits=3)
+        semester = Semester(name="Semester 1", academic_year="2026-2027", number=1)
+        db.session.add_all([faculty, student, course, semester])
+        db.session.flush()
+        db.session.add(Enrollment(
+            student_id=student.id,
+            course_id=course.id,
+            semester_id=semester.id,
+            faculty_id=faculty.id,
+        ))
+        assignment = Assignment(
+            course_id=course.id,
+            faculty_id=faculty.id,
+            title="Lab report",
+            instructions="Submit the report link",
+            due_at=datetime(2026, 12, 1, 12, 0),
+        )
+        db.session.add(assignment)
+        db.session.flush()
+        submission = AssignmentSubmission(
+            assignment_id=assignment.id,
+            student_id=student.id,
+            file_url="https://example.edu/submissions/lab-report",
+        )
+        db.session.add(submission)
+        db.session.commit()
+        assignment_id = assignment.id
+        student_id = student.id
+
+    assert client.post("/api/auth/login", json={
+        "email": "faculty-grade@joyuniversity.edu.in",
+        "password": "TestPassword123!",
+    }).status_code == 200
+
+    listed = client.get(f"/api/academics/assignments/{assignment_id}/submissions")
+    assert listed.status_code == 200
+    assert listed.get_json()["submissions"][0]["student_id"] == student_id
+
+    graded = client.patch(
+        f"/api/academics/assignments/{assignment_id}/submissions/{student_id}",
+        json={"score": 87.5, "feedback": "Clear explanation and good analysis."},
+    )
+    assert graded.status_code == 200
+    assert graded.get_json()["score"] == 87.5
+
+    invalid = client.patch(
+        f"/api/academics/assignments/{assignment_id}/submissions/{student_id}",
+        json={"score": 101, "feedback": "Invalid score"},
+    )
+    assert invalid.status_code == 400
+
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={
+        "email": "student-grade@joyuniversity.edu.in",
+        "password": "TestPassword123!",
+    }).status_code == 200
+    denied = client.patch(
+        f"/api/academics/assignments/{assignment_id}/submissions/{student_id}",
+        json={"score": 90},
+    )
     assert denied.status_code == 403
