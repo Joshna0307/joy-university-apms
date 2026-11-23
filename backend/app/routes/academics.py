@@ -91,12 +91,50 @@ def assignment_submissions(assignment_id):
         .all()
     )
     return jsonify({"submissions": [{
+        "student_id": student.id,
         "student": user.name, "register_number": student.register_number,
         "file_url": submission.file_url,
         "submitted_at": submission.submitted_at.isoformat() + "Z",
         "score": float(submission.score) if submission.score is not None else None,
         "feedback": submission.feedback,
     } for submission, student, user in rows]})
+
+
+@academics_bp.patch("/assignments/<int:assignment_id>/submissions/<int:student_id>")
+@login_required
+@roles_required("faculty")
+def grade_assignment_submission(assignment_id, student_id):
+    faculty = Faculty.query.filter_by(user_id=current_user.id).first()
+    assignment = db.session.get(Assignment, assignment_id)
+    if not faculty or not assignment or assignment.faculty_id != faculty.id:
+        return jsonify({"error": "Assignment not found"}), 404
+
+    submission = AssignmentSubmission.query.filter_by(
+        assignment_id=assignment.id, student_id=student_id
+    ).first()
+    if submission is None:
+        return jsonify({"error": "Student submission not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    try:
+        score = Decimal(str(data.get("score")))
+        if not score.is_finite() or score < 0 or score > 100:
+            raise ValueError
+    except (TypeError, ValueError, InvalidOperation):
+        return jsonify({"error": "Score must be a number between 0 and 100"}), 400
+
+    feedback = data.get("feedback", "")
+    if feedback is not None and not isinstance(feedback, str):
+        return jsonify({"error": "Feedback must be text"}), 400
+
+    submission.score = score
+    submission.feedback = (feedback or "").strip()[:3000]
+    db.session.commit()
+    return jsonify({
+        "message": "Assignment grade saved",
+        "score": float(submission.score),
+        "feedback": submission.feedback,
+    })
 
 
 @academics_bp.post("/assignments/<int:assignment_id>/submit")
