@@ -207,3 +207,70 @@ def test_admin_can_edit_core_records_and_students_cannot(client, app):
     }).status_code == 200
     denied = client.patch(f"/api/admin/courses/{ids['course']}", json={"title": "Unauthorized"})
     assert denied.status_code == 403
+
+def test_admin_can_edit_enrollments_and_students_cannot(client, app):
+    with app.app_context():
+        admin_user = make_user("Admin", "admin-enrollment@joyuniversity.edu.in", "admin")
+        student_one_user = make_user("Student One", "student-one-enrollment@joyuniversity.edu.in", "student")
+        student_two_user = make_user("Student Two", "student-two-enrollment@joyuniversity.edu.in", "student")
+        faculty_user = make_user("Faculty", "faculty-enrollment@joyuniversity.edu.in", "faculty")
+        student_one = Student(user_id=student_one_user.id, register_number="JU-ENR-001")
+        student_two = Student(user_id=student_two_user.id, register_number="JU-ENR-002")
+        faculty = Faculty(user_id=faculty_user.id, employee_number="FAC-ENR-001")
+        original_course = Course(code="ENR101", title="Original Course", credits=3)
+        target_course = Course(code="ENR201", title="Target Course", credits=4)
+        semester = Semester(name="Semester 1", academic_year="2026-2027", number=1)
+        db.session.add_all([
+            student_one, student_two, faculty, original_course, target_course, semester,
+        ])
+        db.session.flush()
+        original = Enrollment(
+            student_id=student_one.id,
+            course_id=original_course.id,
+            semester_id=semester.id,
+        )
+        duplicate_guard = Enrollment(
+            student_id=student_two.id,
+            course_id=target_course.id,
+            semester_id=semester.id,
+        )
+        db.session.add_all([original, duplicate_guard])
+        db.session.commit()
+        enrollment_id = original.id
+        student_two_id = student_two.id
+        target_course_id = target_course.id
+        faculty_id = faculty.id
+
+    assert client.post("/api/auth/login", json={
+        "email": "admin-enrollment@joyuniversity.edu.in",
+        "password": "TestPassword123!",
+    }).status_code == 200
+
+    listed = client.get("/api/admin/enrollments")
+    assert listed.status_code == 200
+    enrollment = next(item for item in listed.get_json()["enrollments"] if item["id"] == enrollment_id)
+    assert enrollment["course_id"] != target_course_id
+    assert enrollment["faculty_id"] is None
+
+    updated = client.patch(f"/api/admin/enrollments/{enrollment_id}", json={
+        "course_id": target_course_id,
+        "faculty_id": faculty_id,
+    })
+    assert updated.status_code == 200
+    assert updated.get_json()["enrollment"]["course_id"] == target_course_id
+    assert updated.get_json()["enrollment"]["faculty_id"] == faculty_id
+
+    duplicate = client.patch(f"/api/admin/enrollments/{enrollment_id}", json={
+        "student_id": student_two_id,
+    })
+    assert duplicate.status_code == 409
+
+    client.post("/api/auth/logout")
+    assert client.post("/api/auth/login", json={
+        "email": "student-one-enrollment@joyuniversity.edu.in",
+        "password": "TestPassword123!",
+    }).status_code == 200
+    denied = client.patch(f"/api/admin/enrollments/{enrollment_id}", json={
+        "faculty_id": None,
+    })
+    assert denied.status_code == 403
