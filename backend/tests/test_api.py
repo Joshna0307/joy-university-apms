@@ -339,6 +339,12 @@ def test_faculty_can_grade_assignment_submissions_and_students_cannot(client, ap
         "email": "student-grade@joyuniversity.edu.in",
         "password": "TestPassword123!",
     }).status_code == 200
+    student_assignments = client.get("/api/academics/assignments")
+    assert student_assignments.status_code == 200
+    visible = student_assignments.get_json()["assignments"][0]["submission"]
+    assert visible["score"] == 87.5
+    assert visible["feedback"] == "Clear explanation and good analysis."
+
     denied = client.patch(
         f"/api/academics/assignments/{assignment_id}/submissions/{student_id}",
         json={"score": 90},
