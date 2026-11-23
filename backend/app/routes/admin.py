@@ -30,6 +30,18 @@ def _optional_int(value, label):
         raise ValueError(f"{label} must be a positive whole number")
 
 
+def _positive_int(value, label):
+    if isinstance(value, bool):
+        raise ValueError(f"{label} must be a positive whole number")
+    try:
+        number = int(value)
+        if number < 1:
+            raise ValueError
+        return number
+    except (TypeError, ValueError):
+        raise ValueError(f"{label} must be a positive whole number")
+
+
 @admin_bp.get("/departments")
 @login_required
 @roles_required("admin")
@@ -390,6 +402,10 @@ def list_enrollments():
         faculty = db.session.get(Faculty, row.faculty_id) if row.faculty_id else None
         result.append({
             "id": row.id,
+            "student_id": row.student_id,
+            "course_id": row.course_id,
+            "semester_id": row.semester_id,
+            "faculty_id": row.faculty_id,
             "student": student.user.name if student else "Student",
             "register_number": student.register_number if student else "",
             "course": course.code if course else "Course",
@@ -427,6 +443,54 @@ def create_enrollment():
         db.session.rollback()
         return jsonify({"error": "This student is already enrolled in this course for the selected semester"}), 409
     return jsonify({"enrollment_id": row.id, "message": "Student enrollment created"}), 201
+
+
+@admin_bp.patch("/enrollments/<int:enrollment_id>")
+@login_required
+@roles_required("admin")
+def update_enrollment(enrollment_id):
+    row = db.session.get(Enrollment, enrollment_id)
+    if row is None:
+        return jsonify({"error": "Enrollment not found"}), 404
+
+    data = request.get_json(silent=True) or {}
+    try:
+        student_id = _positive_int(data.get("student_id", row.student_id), "Student ID")
+        course_id = _positive_int(data.get("course_id", row.course_id), "Course ID")
+        semester_id = _positive_int(data.get("semester_id", row.semester_id), "Semester ID")
+        faculty_id = _optional_int(data.get("faculty_id", row.faculty_id), "Faculty ID")
+    except ValueError as error:
+        return jsonify({"error": str(error)}), 400
+
+    student = db.session.get(Student, student_id)
+    course = db.session.get(Course, course_id)
+    semester = db.session.get(Semester, semester_id)
+    faculty = db.session.get(Faculty, faculty_id) if faculty_id else None
+    if not student or not course or not semester:
+        return jsonify({"error": "Student, course or semester record was not found"}), 404
+    if faculty_id and not faculty:
+        return jsonify({"error": "Faculty record was not found"}), 404
+
+    row.student_id = student_id
+    row.course_id = course_id
+    row.semester_id = semester_id
+    row.faculty_id = faculty_id
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        return jsonify({"error": "This student is already enrolled in this course for the selected semester"}), 409
+
+    return jsonify({
+        "enrollment": {
+            "id": row.id,
+            "student_id": row.student_id,
+            "course_id": row.course_id,
+            "semester_id": row.semester_id,
+            "faculty_id": row.faculty_id,
+        },
+        "message": "Student enrollment updated",
+    })
 
 
 @admin_bp.get("/early-warnings")
