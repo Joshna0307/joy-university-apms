@@ -50,7 +50,6 @@ export default function AdminPanel() {
   }, [active]);
 
   function beginEdit(row) {
-    if (active === "enrollments") return;
     setEditingId(row.id);
     setValues(Object.fromEntries(fields.filter((field) => field.name !== "password").map((field) => [field.name, row[field.name] ?? ""])));
     setError("");
@@ -99,7 +98,7 @@ export default function AdminPanel() {
           {visibleFields.map((field) => (
             <label key={field.name}>{field.label}
               {["department","student","faculty","course","semester"].includes(field.type) ? (
-                <select value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}>
+                <select required={["student", "course", "semester"].includes(field.type)} value={values[field.name] || ""} onChange={(e) => setValues((v) => ({ ...v, [field.name]: e.target.value }))}>
                   <option value="">{field.type === "faculty" ? "No faculty selected" : `Select ${field.type}`}</option>
                   {(field.type === "department" ? departments : lookups[field.type] || []).map((d) => <option key={d.id} value={d.id}>{field.type === "department" ? `${d.code} — ${d.name}` : field.type === "student" ? `${d.register_number} — ${d.name}` : field.type === "faculty" ? `${d.employee_number} — ${d.name}` : field.type === "course" ? `${d.code} — ${d.title}` : `${d.name} (${d.academic_year})`}</option>)}
                 </select>
@@ -117,7 +116,7 @@ export default function AdminPanel() {
           {error && <p className="admin-error" role="alert">{error}</p>}
           {notice && <p className="admin-notice" role="status">{notice}</p>}
           {loading && !records.length ? <p className="muted">Loading records…</p> : records.length ? (
-            <div className="records-table-wrap"><table className="records-table"><thead><tr>{config.columns.map(([, label]) => <th key={label}>{label}</th>)}{active !== "enrollments" && <th>Actions</th>}</tr></thead><tbody>{records.map((row) => <tr key={row.id}>{config.columns.map(([key]) => <td key={key}>{row[key] ?? "—"}</td>)}{active !== "enrollments" && <td><button type="button" className="refresh-button" onClick={() => beginEdit(row)}>Edit</button></td>}</tr>)}</tbody></table></div>
+            <div className="records-table-wrap"><table className="records-table"><thead><tr>{config.columns.map(([, label]) => <th key={label}>{label}</th>)}<th>Actions</th></tr></thead><tbody>{records.map((row) => <tr key={row.id}>{config.columns.map(([key]) => <td key={key}>{row[key] ?? "—"}</td>)}<td><button type="button" className="refresh-button" onClick={() => beginEdit(row)}>Edit</button></td></tr>)}</tbody></table></div>
           ) : <p className="muted empty-records">No {config.label.toLowerCase()} added yet.</p>}
         </div>
       </div>
